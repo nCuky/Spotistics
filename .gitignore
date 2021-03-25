@@ -3,6 +3,7 @@ venv/
 .idea/
 token
 lib/
-lib64/
+lib64
 .dir-locals.el
-pyenv.cfg
+pyvenv.cfg
+bin/
