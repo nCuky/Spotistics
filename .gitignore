@@ -1,4 +1,8 @@
-/.cache
-/venv/
-/.idea/
+.cache
+venv/
+.idea/
 token
+lib/
+lib64/
+.dir-locals.el
+pyenv.cfg
