@@ -7,3 +7,5 @@ lib64
 .dir-locals.el
 pyvenv.cfg
 bin/
+main.py.bak
+__pycache__/
