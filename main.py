@@ -2,6 +2,7 @@ import spotipy as sp
 from spotipy.oauth2 import SpotifyOAuth
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
+import pandas as pd
 
 MAX_TRACKS_FOR_FEATURES = 100
 MAX_TRACKS_FOR_PLAYLIST_ITEMS = 100
@@ -39,7 +40,7 @@ def get_all_user_playlists(client, limit = 50):
     return results
 
 
-def get_all_playlist_tracks(client, playlist_id: list, limit = 100):
+def get_all_playlist_tracks(client, playlist_id: list, limit = MAX_TRACKS_FOR_PLAYLIST_ITEMS):
     response = client.playlist_tracks(playlist_id, limit = limit)
     results = response['items']
     offset = limit
@@ -65,21 +66,79 @@ def find_playlist(playlist_items: list, playlist_name: str):
     return plst_tracks_id
 
 
-def get_tracks_ids(tracks: list):
+def get_tracks_ids(tracks_items: list):
+    '''
+
+    :param tracks_items:
+    :return:
+    '''
     out = list()
-    for trk in tracks:
+    for trk in tracks_items:
         out.append(trk['track']['id'])
     return out
 
 
-def get_tracks_audio_features(client, tracks_items: list, limit = 100):
+def get_tracks_names(tracks_items: list):
+    out = list()
+
+    for trk in tracks_items:
+        out.append(trk['track']['name'])
+
+    return out
+
+
+def get_tracks_audio_features(client, tracks_items: list, limit = MAX_TRACKS_FOR_FEATURES):
+    '''
+    :param client:
+    :param tracks_items:
+    :param limit:
+    :return:
+    '''
     ids = get_tracks_ids(tracks_items)
-    response = client.audio_features(ids)
+    result = list()
+
+    while len(ids) > 0:
+        result.extend(client.audio_features(ids[0:limit]))
+
+        # Removing the first {limit} items from the list:
+        ids = ids[limit:]
+
+    return result
+
+
+def get_specific_audio_feature(client, tracks_items: list, audio_feature: str, limit = MAX_TRACKS_FOR_FEATURES):
+    '''
+    Returns a list of a desired audio feature for all given tracks.
+    :param client:
+    :param tracks_items:
+    :param audio_feature:
+    :param limit:
+    :return:
+    '''
+    tracks_audio_features = get_tracks_audio_features(client, tracks_items, limit)
+    result = list()
+
+    for track in tracks_audio_features:
+        # for audio_feature in audio_features
+        result.append(track[audio_feature])
+
+    return result
+
+
+def create_tracks_data_frame(client, tracks_items: list, audio_features_names: list, limit = MAX_TRACKS_FOR_FEATURES):
+    tracks_with_features = {'track_name': get_tracks_names(tracks_items)}
+
+    for feat_name in audio_features_names:
+        tracks_with_features[feat_name] = get_specific_audio_feature(client, tracks_items, audio_feature = feat_name, limit = limit)
+
+    return pd.DataFrame(data = tracks_with_features)
 
 
 spf_client = get_client_object("user-library-read playlist-read-collaborative playlist-read-private")
 user_playlists = get_all_user_playlists(spf_client)
-erez_nadav_plst = find_playlist(user_playlists, "Erez and Nadav")
-plst_tracks = get_all_playlist_tracks(spf_client, erez_nadav_plst)
+test_plst = find_playlist(user_playlists, "ProgPsy Rock and Neo Psy Rock")
+test_plst_tracks = get_all_playlist_tracks(spf_client, test_plst)
+
+test_df = create_tracks_data_frame(client = spf_client, tracks_items = test_plst_tracks, audio_features_names = ['instrumentalness', 'energy', 'danceability', 'acousticness', 'tempo'])
 
 x = 1
