@@ -8,6 +8,12 @@ MAX_TRACKS_FOR_PLAYLIST_ITEMS = 100
 AUTH_SCOPE = "user-library-read playlist-read-collaborative playlist-read-private"
 
 
+class SpClient:
+    def __init__(self):
+        pass
+    pass
+
+
 def get_token(token_path = None):
     if token_path is None:
         token_path = "token"
