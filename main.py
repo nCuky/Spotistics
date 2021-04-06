@@ -3,10 +3,13 @@ from spotipy.oauth2 import SpotifyOAuth
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
 import pandas as pd
+import datetime as dt
 
 MAX_TRACKS_FOR_FEATURES = 100
 MAX_TRACKS_FOR_PLAYLIST_ITEMS = 100
-AUTH_SCOPE = "user-library-read playlist-read-collaborative playlist-read-private"
+MAX_TRACKS_BATCH_SIZE_FOR_RECENTLY_PLAYED = 50
+MAX_TRACKS_AMOUNT_FOR_RECENTLY_PLAYED = 1000
+AUTH_SCOPE = "user-library-read playlist-read-collaborative playlist-read-private user-read-recently-played"
 REDIRECT_URI = "http://localhost:8888/spotify/callback"
 
 
@@ -50,6 +53,25 @@ def get_tracks_names(tracks_items: list):
 
     for trk in tracks_items:
         out.append(trk['track']['name'])
+
+    return out
+
+
+def get_tracks_artists(tracks_items: list):
+    out = list()
+
+    for trk in tracks_items:
+        # curr_trk = dict()
+
+        curr_artists = dict()
+
+        for i, artist in enumerate(trk['track']['artists']):
+            if artist['name'] == 'Henry Purcell':
+                x = 1
+
+            curr_artists['artist_' + str(i)] = trk['track']['artists'][i]['name']
+
+        out.append(curr_artists)
 
     return out
 
@@ -124,7 +146,8 @@ class SpotifyClient:
 
         return result
 
-    def get_specific_audio_feature(self, tracks_items: list,
+    def get_specific_audio_feature(self,
+                                   tracks_items: list,
                                    audio_feature: str,
                                    limit = MAX_TRACKS_FOR_FEATURES):
         '''
@@ -145,13 +168,44 @@ class SpotifyClient:
 
         return result
 
+    # def get_all_recently_played_tracks(self,
+    #                                    max_tracks_amount = MAX_TRACKS_AMOUNT_FOR_RECENTLY_PLAYED,
+    #                                    batch_size = MAX_TRACKS_BATCH_SIZE_FOR_RECENTLY_PLAYED):
+    #     """
+    #     Returns a large number of the user's recently played tracks.
+    #     :param max_tracks_amount:
+    #     :param batch_size:
+    #     :return:
+    #     """
+    #     self.validate_connection()
+    #     response = self.client.current_user_recently_played(limit = batch_size)
+    #
+    #     results = response['items']
+    #     next_batch_before_timestamp = response['cursors']['before']
+    #
+    #     while  (response['next'] is not None) \
+    #         or (len(results) <= max_tracks_amount):
+    #         response = self.client.current_user_recently_played(limit = batch_size,
+    #                                                             before = next_batch_before_timestamp)
+    #
+    #         results.extend(response['items'])
+    #         next_batch_before_timestamp = response['cursors']['before']
+    #
+    #     return results
+
     def create_tracks_data_frame(self, tracks_items: list,
                                  audio_features_names: list,
                                  limit = MAX_TRACKS_FOR_FEATURES):
         self.validate_connection()
         tracks_with_features = {'track_name': get_tracks_names(tracks_items)}
 
+
+        test_artists_list = get_tracks_artists(tracks_items)
+
+        # tracks_with_features['artist'] =
+
         for feat_name in audio_features_names:
+            # Inserting a new column, titled feat_name, containing a list of all the audio features for all the tracks:
             tracks_with_features[feat_name] = self.get_specific_audio_feature(tracks_items,
                                                                               audio_feature = feat_name,
                                                                               limit = limit)
