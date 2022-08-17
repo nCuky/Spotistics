@@ -3,6 +3,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
 import pandas as pd
+import numpy as np
 import datetime as dt
 
 MAX_TRACKS_FOR_FEATURES = 100
@@ -38,13 +39,14 @@ def find_playlist(playlist_items: list, playlist_name: str):
 
 def get_tracks_ids(tracks_items: list):
     '''
-
+    Returns the IDs of all tracks in a given list.
     :param tracks_items:
     :return:
     '''
     out = list()
     for trk in tracks_items:
         out.append(trk['track']['id'])
+
     return out
 
 
@@ -66,8 +68,8 @@ def get_tracks_artists(tracks_items: list):
         curr_artists = dict()
 
         for i, artist in enumerate(trk['track']['artists']):
-            if artist['name'] == 'Henry Purcell':
-                x = 1
+            # if artist['name'] == 'Henry Purcell':
+            #     x = 1
 
             curr_artists['artist_' + str(i)] = trk['track']['artists'][i]['name']
 
@@ -79,7 +81,9 @@ def get_tracks_artists(tracks_items: list):
 class SpotifyClient:
     client = None
 
-    def __init__(self, token, auth_scope = AUTH_SCOPE,
+    def __init__(self,
+                 token,
+                 auth_scope = AUTH_SCOPE,
                  redirect_uri = REDIRECT_URI):
         cid = token[0].strip()
         csecret = token[1].strip()
@@ -90,6 +94,7 @@ class SpotifyClient:
 
     def connect(self):
         self.client = sp.Spotify(auth_manager = self.auth_manager)
+        # self.client = sp.Spotify(client_credentials_manager = SpotifyClientCredentials())
 
     def disconnected(self):
         self.client = None
@@ -105,6 +110,7 @@ class SpotifyClient:
 
     def get_all_user_playlists(self, limit = 50):
         self.validate_connection()
+
         response = self.client.current_user_playlists(limit = limit)
         results = response['items']
         offset = limit
@@ -112,22 +118,27 @@ class SpotifyClient:
             response = self.client.current_user_playlists(limit = limit, offset = offset)
             results.extend(response['items'])
             offset += limit
+
         return results
 
-    def get_all_playlist_tracks(self, playlist_id: list,
+    def get_all_playlist_tracks(self,
+                                playlist_id: list,
                                 limit = MAX_TRACKS_FOR_PLAYLIST_ITEMS):
         self.validate_connection()
+
         response = self.client.playlist_tracks(playlist_id, limit = limit)
         results = response['items']
         offset = limit
         while response['next'] is not None:
-            response = self.client.playlist_tracks(playlist_id, limit = limit,
-                                                    offset = offset)
+            response = self.client.playlist_tracks(playlist_id,
+                                                   limit = limit,
+                                                   offset = offset)
             results.extend(response['items'])
             offset += limit
         return results
 
-    def get_tracks_audio_features(self, tracks_items: list,
+    def get_tracks_audio_features(self,
+                                  tracks_items: list,
                                   limit = MAX_TRACKS_FOR_FEATURES):
         '''
         :param tracks_items:
@@ -135,6 +146,7 @@ class SpotifyClient:
         :return:
         '''
         self.validate_connection()
+
         ids = get_tracks_ids(tracks_items)
         result = list()
 
@@ -167,6 +179,50 @@ class SpotifyClient:
             result.append(track[audio_feature])
 
         return result
+
+    def get_audio_analysis(self,
+                           track_id):
+
+        self.validate_connection()
+
+        analysis = self.client.audio_analysis(track_id)
+        return analysis
+
+    def get_audio_analysis(self,
+                           tracks_ids: list):
+        self.validate_connection()
+
+        result = list()
+
+        for track_id in tracks_ids:
+            result.append(self.client.audio_analysis(track_id))
+
+        return result
+
+
+    def find_artist(self,
+                    artist_name: str):
+        '''
+        :param artist_name: Name of the desired Artist to find
+        '''
+
+
+    def get_all_tracks_by_artists(self,
+                                  artist_id):
+        '''
+        Returns a list of all the tracks by the given Artist.
+        :param artist_id: ID of the desired Artist
+        '''
+        self.validate_connection()
+
+        artist_albums(artist_id, album_type='album')
+        albums = results['items']
+
+        while results['next']:
+            results = spotify.next(results)
+            albums.extend(results['items'])
+
+
 
     # def get_all_recently_played_tracks(self,
     #                                    max_tracks_amount = MAX_TRACKS_AMOUNT_FOR_RECENTLY_PLAYED,
@@ -213,12 +269,81 @@ class SpotifyClient:
         return pd.DataFrame(data = tracks_with_features)
 
 
-my_spotify = SpotifyClient(get_token())
-my_spotify.connect()
-user_playlists = my_spotify.get_all_user_playlists()
-test_plst = find_playlist(user_playlists, "Erez and Nadav")
-test_plst_tracks = my_spotify.get_all_playlist_tracks(test_plst)
-test_df = my_spotify.create_tracks_data_frame(tracks_items = test_plst_tracks,
-                                              audio_features_names = ['instrumentalness', 'energy', 'danceability', 'acousticness', 'tempo'])
+class SpotifyData:
+    data = None
+
+    def __init__(self, aggr_level = 'track', data_dir = 'data/spoti_data'):
+        '''
+        Reads data from Spotify CSV data files into a parse-able dataframe.
+        :param aggr_level: Which dataset to load ('track', 'artist', 'genres', 'year', 'w_genres')
+        :param data_dir: Directory of the data file
+        '''
+        dict_file_names = {'track'   : "data.csv",
+                           'artist'  : "data_by_artist.csv",
+                           'genres'  : "data_by_genres.csv",
+                           'year'    : "data_by_year.csv",
+                           'w_genres': "data_w_genres.csv"}
+
+        file_path = data_dir + '/' + dict_file_names[aggr_level]
+        self.data = self.prepare_data(pd.read_csv(file_path))
+
+
+    def prepare_data(self, df_to_prepare):
+        '''
+        Prepares the data for musical analysis, e.g. recodes key and mode fields to human-readable letters.
+        :return: The prepared Spotify data.
+        '''
+
+        modes_replacement_dict = {'from': [0, 1],
+                                  'to'  : ['m', 'M']}
+
+        keys_replacement_dict = {'from': np.arange(start = 0, stop = 12, step = 1),
+                                 'to'  : ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']}
+
+        df_to_prepare['mode'] = df_to_prepare['mode'].replace(to_replace = modes_replacement_dict['from'],
+                                                              value = modes_replacement_dict['to'])
+
+        df_to_prepare['key'] = df_to_prepare['key'].replace(to_replace = keys_replacement_dict['from'],
+                                                            value = keys_replacement_dict['to'])
+
+        df_to_prepare['full_key'] = df_to_prepare['key'] + df_to_prepare['mode']
+
+        return df_to_prepare
+
+
+# my_spotify = SpotifyClient(get_token())
+# my_spotify.connect()
+# user_playlists = my_spotify.get_all_user_playlists()
+# test_plst = find_playlist(user_playlists, "Erez and Nadav")
+# test_plst_tracks = my_spotify.get_all_playlist_tracks(test_plst)
+# test_df = my_spotify.create_tracks_data_frame(tracks_items = test_plst_tracks,
+#                                               audio_features_names = ['instrumentalness', 'energy', 'danceability', 'acousticness', 'tempo'])
+
+my_spoti_data = SpotifyData()
+only_duration = my_spoti_data.data.groupby('key')['duration_ms'].sum()
+my_results = my_spoti_data.data.drop(columns = 'duration_ms').groupby('key').mean().assign(duration_ms = only_duration)
+my_results.to_csv("our_results.csv")
+# my_spoti_data.data.groupby('key').mean().to_csv("mean_by_key.csv")
+
 
 x = 1
+
+def calc_listen_data_by_key():
+    '''
+    Aggregates all listened tracks by key, and writes it as a csv file
+    :return:
+    '''
+    my_spoti_data = SpotifyData(aggr_level = 'track')
+    only_duration = my_spoti_data.data.groupby('key')['duration_ms'].sum()
+    my_results = my_spoti_data.data.drop(columns = 'duration_ms').groupby('key').mean().assign(
+        duration_ms = only_duration)
+    my_results.to_csv("listen_data_by_key.csv")
+
+
+def calc_listen_data_mean_key():
+    '''
+    Aggregates all listened tracks by mean key
+    :return:
+    '''
+    my_spoti_data = SpotifyData(aggr_level = 'track')
+    my_spoti_data.data.groupby('key').mean().to_csv("mean_by_key.csv")
