@@ -9,3 +9,14 @@ pyvenv.cfg
 bin/
 main.py.bak
 __pycache__/
+/mean_by_key.csv
+/our_results.csv
+/results_count_by_key_2022-08-12 22_16_54.csv
+/results_group_by_key_2022-08-12 22_15_49.csv
+/results_key_2022-08-09 22_20_01.csv
+/results_key_2022-08-09 22_20_01.xlsx
+/results_key_2022-08-09 22_33_53.csv
+/results_key_2022-08-09 22_34_49.csv
+/results_key_2022-08-12 22_09_21.csv
+/results_key_2022-08-12 22_10_55.csv
+/test_df.csv
