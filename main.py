@@ -5,6 +5,8 @@ import os
 import pandas as pd
 import numpy as np
 import datetime as dt
+import tekore as tk
+
 
 MAX_TRACKS_FOR_FEATURES = 100
 MAX_TRACKS_FOR_PLAYLIST_ITEMS = 100
@@ -78,7 +80,10 @@ def get_tracks_artists(tracks_items: list):
     return out
 
 
-class SpotifyClient:
+class SpotifyAPIClient:
+    '''
+    Spotify Client logic. Uses the Spotify API via python library "Spotipy".
+    '''
     client = None
 
     def __init__(self,
@@ -121,21 +126,51 @@ class SpotifyClient:
 
         return results
 
-    def get_all_playlist_tracks(self,
+
+    def playlist_get_all_tracks(self,
                                 playlist_id: list,
                                 limit = MAX_TRACKS_FOR_PLAYLIST_ITEMS):
         self.validate_connection()
 
-        response = self.client.playlist_tracks(playlist_id, limit = limit)
+        response = self.client.playlist_items(playlist_id, limit = limit)
         results = response['items']
         offset = limit
         while response['next'] is not None:
-            response = self.client.playlist_tracks(playlist_id,
+            response = self.client.playlist_items(playlist_id,
                                                    limit = limit,
                                                    offset = offset)
             results.extend(response['items'])
             offset += limit
         return results
+
+    def album_get_all_tracks(self,
+                             album_id: list,
+                             limit = MAX_TRACKS_FOR_PLAYLIST_ITEMS):
+        '''
+        Returns all Tracks in a given Album.
+        :param album_id: ID of the desired Album.
+        :param limit:
+        :return: All Tracks in the desired Album (list)
+        '''
+        self.validate_connection()
+
+        response = list
+
+        client1 = tk.Spotify(self.to)
+        track_paging = client1.album_tracks(album_id)
+
+        response = client1.all_items(track_paging).items
+
+
+        result = self.client.playlist_items(album_id, limit = limit)
+        tracks = result['items']
+
+        while result['items']:
+            result = sp.Spotify.next(result)
+            tracks.extend(result['items'])
+
+        return tracks
+
 
     def get_tracks_audio_features(self,
                                   tracks_items: list,
@@ -205,23 +240,43 @@ class SpotifyClient:
         '''
         :param artist_name: Name of the desired Artist to find
         '''
+        self.validate_connection()
+
+        result = self.client.search("artist:" + artist_name,
+                                    limit = 1,
+                                    type = 'artist' )
+
+        return result['artists']['items'][0]['id']
 
 
-    def get_all_tracks_by_artists(self,
-                                  artist_id):
+
+    def artist_get_all_tracks(self,
+                              artist_id):
         '''
         Returns a list of all the tracks by the given Artist.
         :param artist_id: ID of the desired Artist
         '''
         self.validate_connection()
 
-        artist_albums(artist_id, album_type='album')
-        albums = results['items']
+        tracks = list
 
-        while results['next']:
-            results = spotify.next(results)
-            albums.extend(results['items'])
+        for album in self.artist_get_all_albums(artist_id)['items']:
+            tracks.extend(self.album_get_all_tracks(album))
 
+        return tracks
+
+    def artist_get_all_albums(self,
+                              artist_id):
+        self.validate_connection()
+
+        result = self.client.artist_albums(artist_id, album_type='album')
+        albums = result['items']
+
+        while result['items']:
+            result = sp.Spotify.next(result)
+            albums.extend(result['items'])
+
+        return albums
 
 
     # def get_all_recently_played_tracks(self,
@@ -310,23 +365,28 @@ class SpotifyData:
 
         return df_to_prepare
 
+# ------------- Spotipy API
+spapic = SpotifyAPIClient(get_token())
+spapic.connect()
 
-# my_spotify = SpotifyClient(get_token())
-# my_spotify.connect()
-# user_playlists = my_spotify.get_all_user_playlists()
+zappa_artist_id = spapic.find_artist("Frank Zappa")
+zappa_tracks = spapic.artist_get_all_tracks(zappa_artist_id)
+
+x = 1 #break
+
+# user_playlists = spapic.get_all_user_playlists()
 # test_plst = find_playlist(user_playlists, "Erez and Nadav")
-# test_plst_tracks = my_spotify.get_all_playlist_tracks(test_plst)
-# test_df = my_spotify.create_tracks_data_frame(tracks_items = test_plst_tracks,
+# test_plst_tracks = spapic.get_all_playlist_tracks(test_plst)
+# test_df = spapic.create_tracks_data_frame(tracks_items = test_plst_tracks,
 #                                               audio_features_names = ['instrumentalness', 'energy', 'danceability', 'acousticness', 'tempo'])
 
+#------------ local data csv's, local logic
 my_spoti_data = SpotifyData()
 only_duration = my_spoti_data.data.groupby('key')['duration_ms'].sum()
 my_results = my_spoti_data.data.drop(columns = 'duration_ms').groupby('key').mean().assign(duration_ms = only_duration)
 my_results.to_csv("our_results.csv")
 # my_spoti_data.data.groupby('key').mean().to_csv("mean_by_key.csv")
 
-
-x = 1
 
 def calc_listen_data_by_key():
     '''
