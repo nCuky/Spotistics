@@ -1,11 +1,17 @@
-import tekore as tk
+import spotipy as sp
+import tekore as tek
+# from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.oauth2 import SpotifyOAuth
 
 
 class SpotifyAPIClient:
     '''
-    Spotify API Client logic. uses "Tekore" module to call Spotify API.
+    Spotify API Client logic. uses "Spotipy" library to call Spotify API.
     '''
-
+    MAX_TRACKS_FOR_FEATURES = 100
+    MAX_TRACKS_FOR_PLAYLIST_ITEMS = 100
+    MAX_TRACKS_BATCH_SIZE_FOR_RECENTLY_PLAYED = 50
+    MAX_TRACKS_AMOUNT_FOR_RECENTLY_PLAYED = 1000
     AUTH_SCOPE = "user-library-read playlist-read-collaborative playlist-read-private user-read-recently-played"
     REDIRECT_URI = "http://localhost:8888/spotify/callback"
 
@@ -17,17 +23,10 @@ class SpotifyAPIClient:
                  redirect_uri=REDIRECT_URI):
         cl_id = token[0].strip()
         cl_secret = token[1].strip()
-
-        conf = (cl_id, cl_secret, redirect_uri)
-        token = tk.prompt_for_user_token(*conf,
-                                         scope=auth_scope)      # scope=tk.scope.every)
-
-        self.client = tk.Spotify(token)
-
-        # self.auth_manager = SpotifyOAuth(client_id=cl_id,
-        #                                  client_secret=cl_secret,
-        #                                  redirect_uri=redirect_uri,
-        #                                  scope=auth_scope)
+        self.auth_manager = SpotifyOAuth(client_id=cl_id,
+                                         client_secret=cl_secret,
+                                         redirect_uri=redirect_uri,
+                                         scope=auth_scope)
 
     def connect(self):
         self.client = sp.Spotify(auth_manager=self.auth_manager)

@@ -10,12 +10,11 @@ def get_token(token_path=None):
     return token_file_text
 
 
-def find_playlist(playlist_items: list, playlist_name: str):
+def find_playlist_in_list(playlist_items: list, playlist_name: str):
     """
     Finds a playlist by a given name.
-    :return: tracks' id of the found playlist, otherwise None
+    :return: Tracks' IDs of the found playlist, otherwise None
     """
-
     for plst in playlist_items:
         if plst['name'] == playlist_name:
             plst_tracks_id = plst['id']
@@ -70,6 +69,7 @@ spapic.connect()
 
 zappa_artist_id = spapic.find_artist("Frank Zappa")
 zappa_tracks = spapic.artist_get_all_tracks(zappa_artist_id)
+zappa_tracks_features = spapic.get_tracks_audio_features(zappa_tracks)
 
 x = 1  # break
 

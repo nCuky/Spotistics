@@ -1,6 +1,9 @@
 1. make sure the API returns ALL items and not only the first 100 - send 'offset' parameter to the API function calls
+rewrite all functions so that they use this new logic
 
-2. rewrite all functions so that they use this new logic
+2. GUI - 'get audio features' button -> show graph
+
+3. Multi-Threading - when fetching large quantity of data, optimize performance so that it fetches using multi processing.
 
 
 
