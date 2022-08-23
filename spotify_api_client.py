@@ -5,12 +5,14 @@ class SpotifyAPIClient:
     '''
     Spotify API Client logic. uses "Tekore" module to call Spotify API.
     '''
+
     MAX_TRACKS_FOR_FEATURES = 100
     MAX_TRACKS_FOR_PLAYLIST_ITEMS = 100
+    MAX_TRACKS_BATCH_SIZE_FOR_RECENTLY_PLAYED = 50
+    MAX_TRACKS_AMOUNT_FOR_RECENTLY_PLAYED = 1000
     AUTH_SCOPE = "user-library-read playlist-read-collaborative playlist-read-private user-read-recently-played"
     REDIRECT_URI = "http://localhost:8888/spotify/callback"
 
-    client = tk.Spotify
 
     def __init__(self,
                  token):
@@ -23,8 +25,6 @@ class SpotifyAPIClient:
         cl_id = token[0].strip()
         cl_secret = token[1].strip()
 
-        # app_token = tk.prompt_for_user_token(*conf,
-        #                                  scope = auth_scope)  # scope=tk.scope.every)
         app_token = tk.request_client_token(cl_id,
                                             cl_secret)
 
