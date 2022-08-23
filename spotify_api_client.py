@@ -5,40 +5,39 @@ class SpotifyAPIClient:
     '''
     Spotify API Client logic. uses "Tekore" module to call Spotify API.
     '''
-
+    MAX_TRACKS_FOR_FEATURES = 100
+    MAX_TRACKS_FOR_PLAYLIST_ITEMS = 100
     AUTH_SCOPE = "user-library-read playlist-read-collaborative playlist-read-private user-read-recently-played"
     REDIRECT_URI = "http://localhost:8888/spotify/callback"
 
-    client = None
+    client = tk.Spotify
 
     def __init__(self,
-                 token,
-                 auth_scope=AUTH_SCOPE,
-                 redirect_uri=REDIRECT_URI):
+                 token):
+        self.connect(token=token)
+
+
+    def connect(self,
+                token):
+
         cl_id = token[0].strip()
         cl_secret = token[1].strip()
 
-        conf = (cl_id, cl_secret, redirect_uri)
-        token = tk.prompt_for_user_token(*conf,
-                                         scope=auth_scope)      # scope=tk.scope.every)
+        # app_token = tk.prompt_for_user_token(*conf,
+        #                                  scope = auth_scope)  # scope=tk.scope.every)
+        app_token = tk.request_client_token(cl_id,
+                                            cl_secret)
 
-        self.client = tk.Spotify(token)
+        self.client = tk.Spotify(app_token)
 
-        # self.auth_manager = SpotifyOAuth(client_id=cl_id,
-        #                                  client_secret=cl_secret,
-        #                                  redirect_uri=redirect_uri,
-        #                                  scope=auth_scope)
-
-    def connect(self):
-        self.client = sp.Spotify(auth_manager=self.auth_manager)
-        # self.client = sp.Spotify(client_credentials_manager = SpotifyClientCredentials())
-
-    def disconnected(self):
+    def disconnect(self):
+        self.client.close()
         self.client = None
 
     def is_connected(self):
         if self.client is None:
             return False
+
         return True
 
     def validate_connection(self):
@@ -48,13 +47,13 @@ class SpotifyAPIClient:
     def get_all_user_playlists(self, limit=50):
         self.validate_connection()
 
-        response = self.client.current_user_playlists(limit=limit)
+        response = self.client.playlists(user_id = self.client.current_user().id,
+                                         limit = limit)
         results = response['items']
-        offset = limit
-        while response['next'] is not None:
-            response = self.client.current_user_playlists(limit=limit, offset=offset)
-            results.extend(response['items'])
-            offset += limit
+        # offset = limit
+
+        while response.next is not None:
+            results.extend(response.next())
 
         return results
 
@@ -179,17 +178,17 @@ class SpotifyAPIClient:
         return result
 
     def find_artist(self,
-                    artist_name: str):
+                    name: str):
         '''
         :param artist_name: Name of the desired Artist to find
         '''
         self.validate_connection()
 
-        result = self.client.search("artist:" + artist_name,
-                                    limit=1,
-                                    type='artist')
+        result = self.client.search(name,
+                                    types=('artist',),
+                                    limit=1)
 
-        return result['artists']['items'][0]['id']
+        return result[0].items[0]
 
     def artist_get_all_tracks(self,
                               artist_id):
@@ -210,12 +209,12 @@ class SpotifyAPIClient:
                               artist_id):
         self.validate_connection()
 
-        result = self.client.artist_albums(artist_id, album_type='album')
-        albums = result['items']
+        result = self.client.artist_albums(artist_id = artist_id)
+        albums = result.items
 
-        while result['items']:
-            result = sp.Spotify.next(result)
-            albums.extend(result['items'])
+        while result.next is not None:
+            result = tk.Spotify.next(result.next)
+            albums.extend(result.items)
 
         return albums
 

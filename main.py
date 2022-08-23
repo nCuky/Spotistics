@@ -1,5 +1,11 @@
-from spotify_api_client import SpotifyAPIClient as spapi
+import datetime
 
+from numpy.distutils.system_info import dfftw_info
+
+from spotify_api_client import SpotifyAPIClient as spapi
+from SpotifyDataSet import SpotifyDataSet as spdt
+from pyspark.sql import SparkSession
+import pandas as pd
 
 def get_token(token_path=None):
     if token_path is None:
@@ -64,14 +70,30 @@ def get_tracks_artists(tracks_items: list):
     return out
 
 
-spapic = spapi(get_token())
-spapic.connect()
-
-zappa_artist_id = spapic.find_artist("Frank Zappa")
-zappa_tracks = spapic.artist_get_all_tracks(zappa_artist_id)
-zappa_tracks_features = spapic.get_tracks_audio_features(zappa_tracks)
+# spapic = spapi(token=get_token())
+#
+# zappa_artist_id = spapic.find_artist("Frank Zappa").id
+# zappa_tracks = spapic.artist_get_all_tracks(zappa_artist_id)
+# zappa_tracks_features = spapic.get_tracks_audio_features(zappa_tracks)
 
 x = 1  # break
+
+
+
+# PySpark
+print(str(datetime.datetime.now()) + ' --- Building Spark Session...')
+spark = SparkSession.builder.appName('Practice').getOrCreate()
+
+print(str(datetime.datetime.now()) + ' --- Reading CSV... ')
+df_pyspark = spark.read.csv('test1.csv', header=True, inferSchema = True)
+
+print(str(datetime.datetime.now()) + ' --- Doing stuff... ')
+df_pyspark.withColumnRenamed('track_name','name').show()
+
+
+
+
+
 
 # user_playlists = spapic.get_all_user_playlists()
 # test_plst = find_playlist(user_playlists, "Erez and Nadav")
@@ -79,11 +101,12 @@ x = 1  # break
 # test_df = spapic.create_tracks_data_frame(tracks_items = test_plst_tracks,
 #                                               audio_features_names = ['instrumentalness', 'energy', 'danceability', 'acousticness', 'tempo'])
 
-# ------------ local data csv's, local logic
-my_spoti_data = SpotifyDataSet()
-only_duration = my_spoti_data.data.groupby('key')['duration_ms'].sum()
-my_results = my_spoti_data.data.drop(columns='duration_ms').groupby('key').mean().assign(duration_ms=only_duration)
-my_results.to_csv("our_results.csv")
+
+# # ------------ local data csv's, local logic
+# my_spoti_data = spdt()
+# only_duration = my_spoti_data.data.groupby('key')['duration_ms'].sum()
+# my_results = my_spoti_data.data.drop(columns='duration_ms').groupby('key').mean().assign(duration_ms=only_duration)
+# my_results.to_csv("our_results.csv")
 
 
 # my_spoti_data.data.groupby('key').mean().to_csv("mean_by_key.csv")
@@ -94,7 +117,7 @@ def calc_listen_data_by_key():
     Aggregates all listened tracks by key, and writes it as a csv file
     :return:
     '''
-    my_spoti_data = SpotifyDataSet(aggr_level='track')
+    my_spoti_data = spdt(aggr_level='track')
     only_duration = my_spoti_data.data.groupby('key')['duration_ms'].sum()
     my_results = my_spoti_data.data.drop(columns='duration_ms').groupby('key').mean().assign(
         duration_ms=only_duration)
@@ -106,5 +129,5 @@ def calc_listen_data_mean_key():
     Aggregates all listened tracks by mean key
     :return:
     '''
-    my_spoti_data = SpotifyDataSet(aggr_level='track')
+    my_spoti_data = spdt(aggr_level='track')
     my_spoti_data.data.groupby('key').mean().to_csv("mean_by_key.csv")
