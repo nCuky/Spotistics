@@ -18,7 +18,6 @@ class SpotifyAPIClient:
                  token):
         self.connect(token=token)
 
-
     def connect(self,
                 token):
 
@@ -102,8 +101,7 @@ class SpotifyAPIClient:
         return tracks
 
     def get_tracks_audio_features(self,
-                                  tracks_ids: list,
-                                  limit=MAX_TRACKS_FOR_FEATURES):
+                                  tracks_ids: list):
         '''
         :param tracks_ids: IDs of the desired tracks to get Audio Features of.
         :param limit:
@@ -111,17 +109,24 @@ class SpotifyAPIClient:
         '''
         self.validate_connection()
 
-        result = self.client.audio_features(tracks_ids,
-                                            limit=limit)
-        features = result['items']
-        offset = limit
+        result = self.client.tracks_audio_features(track_ids=tracks_ids)
+        features = result.items
 
-        while result['next'] is not None:
-            result = self.client.audio_features(tracks_ids,
-                                                limit=limit,
-                                                offset=offset)
-            features.extend(result['items'])
-            offset += limit
+        return features
+
+        #
+        # while result.next is not None:
+        #     result = tk.Spotify.next(result.next)
+        #     features.extend(result.items)
+        #
+        # return features
+
+        # while result['next'] is not None:
+        #     result = self.client.audio_features(tracks_ids,
+        #                                         limit=limit,
+        #                                         offset=offset)
+        #     features.extend(result['items'])
+        #     offset += limit
 
         # while result['items']:
         #     result = sp.Spotify.next(result)
@@ -132,24 +137,22 @@ class SpotifyAPIClient:
         #
         #     # Removing the first {limit} items from the list:
         #     tracks_ids = tracks_ids[limit:]
-
-        return features
+        #
+        # return features
 
 
     def get_specific_audio_feature(self,
                                    tracks_items: list,
-                                   audio_feature: str,
-                                   limit=MAX_TRACKS_FOR_FEATURES):
+                                   audio_feature: str):
         '''
         Returns a list of a desired audio feature for all given tracks.
         :param tracks_items:
         :param audio_feature:
-        :param limit:
         :return:
         '''
         self.validate_connection()
-        tracks_audio_features = self.get_tracks_audio_features(tracks_items,
-                                                               limit)
+
+        tracks_audio_features = self.get_tracks_audio_features(tracks_items)
         result = list()
 
         for track in tracks_audio_features:
@@ -160,27 +163,27 @@ class SpotifyAPIClient:
 
     def get_audio_analysis(self,
                            track_id):
-
         self.validate_connection()
 
         analysis = self.client.audio_analysis(track_id)
+
         return analysis
 
     def get_audio_analysis(self,
                            tracks_ids: list):
         self.validate_connection()
 
-        result = list()
+        analyses = list()
 
         for track_id in tracks_ids:
-            result.append(self.client.audio_analysis(track_id))
+            analyses.append(self.client.audio_analysis(track_id))
 
-        return result
+        return analyses
 
     def find_artist(self,
                     name: str):
         '''
-        :param artist_name: Name of the desired Artist to find
+        :param name: Name of the desired Artist to find
         '''
         self.validate_connection()
 
@@ -209,14 +212,18 @@ class SpotifyAPIClient:
                               artist_id):
         self.validate_connection()
 
-        result = self.client.artist_albums(artist_id = artist_id)
-        albums = result.items
-
-        while result.next is not None:
-            result = tk.Spotify.next(result.next)
-            albums.extend(result.items)
+        albums = tk.Spotify.all_items(self=self.client,
+                                      page=self.client.artist_albums(artist_id=artist_id))
 
         return albums
+
+        # albums = result.items
+        #
+        # while result.next is not None:
+        #     result = tk.Spotify.next(result)
+        #     albums.extend(result.items)
+        #
+        # return albums
 
     # def get_all_recently_played_tracks(self,
     #                                    max_tracks_amount = MAX_TRACKS_AMOUNT_FOR_RECENTLY_PLAYED,
