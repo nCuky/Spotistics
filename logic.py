@@ -1,6 +1,7 @@
 from spotify_api_client import SpotifyAPIClient as spapi
 from SpotifyDataSet import SpotifyDataSet as spdt
-
+import pyspark as sk
+import seaborn as sns
 
 def get_token(token_path=None):
     if token_path is None:
@@ -17,7 +18,8 @@ spapic = spapi(token=get_token())
 def get_artist_audio_features_data(name: str):
     artist_id = spapic.find_artist(name).id
     tracks = spapic.artist_get_all_tracks(artist_id)
-    tracks_features = spapic.get_tracks_audio_features(tracks)
+    tracks_ids = [track.id for track in tracks]
+    tracks_features = spapic.get_tracks_audio_features(tracks_ids)
 
 
 def find_playlist_in_list(playlist_items: list, playlist_name: str):

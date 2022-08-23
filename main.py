@@ -1,12 +1,16 @@
 import datetime
 # from pyspark.sql import SparkSession
 import pandas as pd
-from app_gui import GUI as GUI
+# from app_gui import GUI as GUI
+import logic as lg
 
 
-my_gui = GUI()
 
-my_gui.close()
+features_data = lg.get_artist_audio_features_data(name = "Frank Zappa")
+
+# my_gui = GUI()
+#
+# my_gui.close()
 
 
 
