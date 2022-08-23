@@ -1,4 +1,5 @@
 from spotify_api_client import SpotifyAPIClient as spapi
+from app_gui import GUI
 
 
 def get_token(token_path=None):
@@ -62,6 +63,12 @@ def get_tracks_artists(tracks_items: list):
         out.append(curr_artists)
 
     return out
+
+
+gui = GUI()
+
+gui.close()
+
 
 
 spapic = spapi(get_token())
