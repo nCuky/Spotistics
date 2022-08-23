@@ -1,5 +1,4 @@
 import tekore as tk
-import tekore.model
 
 
 class SpotifyAPIClient:
@@ -86,7 +85,7 @@ class SpotifyAPIClient:
     def find_artist(self,
                     name: str):
         '''
-        :param name: Name of the desired Artist to find
+        param name: Name of the desired Artist to find
         '''
         self.validate_connection()
 
@@ -100,7 +99,7 @@ class SpotifyAPIClient:
                               artist_id: str):
         '''
         Returns a list of all the tracks by the given Artist.
-        :param artist_id: ID of the desired Artist
+        param artist_id: ID of the desired Artist
         '''
         self.validate_connection()
 
@@ -126,7 +125,7 @@ class SpotifyAPIClient:
         self.validate_connection()
 
         albums_paging = self.client.artist_albums(artist_id = artist_id,
-                                                  include_groups = [tk.model.AlbumGroup.album,])
+                                                  include_groups = [tk.model.AlbumGroup.album, ])
         all_albums = albums_paging.items
 
         while albums_paging.next is not None:
