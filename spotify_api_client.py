@@ -14,15 +14,15 @@ class SpotifyAPIClient:
 
     def __init__(self,
                  token):
-        self.app_token: tk.RefreshingToken = None
-        self.client = tk.Spotify(token = self.get_app_token(token),
-                                 max_limits_on = True,
-                                 chunked_on = True)
+        self.app_token: tk.RefreshingToken() = None
+        self.client = tk.Spotify(token=self.get_app_token(token),
+                                 max_limits_on=True,
+                                 chunked_on=True)
 
     # region Connection logic
 
     def get_app_token(self,
-                      token = None) -> tk.RefreshingToken:
+                      token=None) -> tk.RefreshingToken:
         if token is not None:
             cl_id = token[0].strip()
             cl_secret = token[1].strip()
@@ -32,9 +32,9 @@ class SpotifyAPIClient:
         return self.app_token
 
     def connect(self) -> None:
-        self.client = tk.Spotify(token = self.get_app_token(),
-                                 max_limits_on = True,
-                                 chunked_on = True)
+        self.client = tk.Spotify(token=self.get_app_token(),
+                                 max_limits_on=True,
+                                 chunked_on=True)
 
     def disconnect(self) -> None:
         if self.is_connected():
@@ -52,11 +52,11 @@ class SpotifyAPIClient:
 
     # endregion
 
-    def get_all_user_playlists(self, limit = 50):
+    def get_all_user_playlists(self, limit=50):
         self.validate_connection()
 
-        response = self.client.playlists(user_id = self.client.current_user().id,
-                                         limit = limit)
+        response = self.client.playlists(user_id=self.client.current_user().id,
+                                         limit=limit)
         results = response['items']
         # offset = limit
 
@@ -67,16 +67,16 @@ class SpotifyAPIClient:
 
     def playlist_get_all_tracks(self,
                                 playlist_id: list,
-                                limit = MAX_TRACKS_FOR_PLAYLIST_ITEMS):
+                                limit=MAX_TRACKS_FOR_PLAYLIST_ITEMS):
         self.validate_connection()
 
-        response = self.client.playlist_items(playlist_id, limit = limit)
+        response = self.client.playlist_items(playlist_id, limit=limit)
         results = response['items']
         offset = limit
         while response['next'] is not None:
             response = self.client.playlist_items(playlist_id,
-                                                  limit = limit,
-                                                  offset = offset)
+                                                  limit=limit,
+                                                  offset=offset)
             results.extend(response['items'])
             offset += limit
 
@@ -90,8 +90,8 @@ class SpotifyAPIClient:
         self.validate_connection()
 
         result = self.client.search(name,
-                                    types = ('artist',),
-                                    limit = 1)
+                                    types=('artist',),
+                                    limit=1)
 
         return result[0].items[0]
 
@@ -124,8 +124,8 @@ class SpotifyAPIClient:
                               artist_id: str) -> tk.model.ModelList:
         self.validate_connection()
 
-        albums_paging = self.client.artist_albums(artist_id = artist_id,
-                                                  include_groups = [tk.model.AlbumGroup.album, ])
+        albums_paging = self.client.artist_albums(artist_id=artist_id,
+                                                  include_groups=[tk.model.AlbumGroup.album, ])
         all_albums = albums_paging.items
 
         while albums_paging.next is not None:
@@ -143,7 +143,7 @@ class SpotifyAPIClient:
         '''
         self.validate_connection()
 
-        tracks_paging = self.client.album_tracks(album_id = album_id)
+        tracks_paging = self.client.album_tracks(album_id=album_id)
         all_tracks = tracks_paging.items
 
         while tracks_paging.next is not None:
@@ -191,7 +191,7 @@ class SpotifyAPIClient:
         '''
         self.validate_connection()
 
-        all_features = self.client.tracks_audio_features(track_ids = tracks_ids)
+        all_features = self.client.tracks_audio_features(track_ids=tracks_ids)
 
         return all_features
 
@@ -236,7 +236,7 @@ class SpotifyAPIClient:
 
     def create_tracks_data_frame(self, tracks_items: list,
                                  audio_features_names: list,
-                                 limit = MAX_TRACKS_FOR_FEATURES):
+                                 limit=MAX_TRACKS_FOR_FEATURES):
         self.validate_connection()
         tracks_with_features = {'track_name': get_tracks_names(tracks_items)}
 
@@ -247,7 +247,7 @@ class SpotifyAPIClient:
         for feat_name in audio_features_names:
             # Inserting a new column, titled feat_name, containing a list of all the audio features for all the tracks:
             tracks_with_features[feat_name] = self.get_specific_audio_feature(tracks_items,
-                                                                              audio_feature = feat_name,
-                                                                              limit = limit)
+                                                                              audio_feature=feat_name,
+                                                                              limit=limit)
 
-        return pd.DataFrame(data = tracks_with_features)
+        return pd.DataFrame(data=tracks_with_features)

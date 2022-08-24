@@ -1,23 +1,29 @@
-import datetime
+from scipy.stats import trapezoid_gen
+import datetime as dt
+from SpotifyDataSet import SpotifyDataSet as spdt
 # from pyspark.sql import SparkSession
 import pandas as pd
 # from app_gui import GUI as GUI
 import logic as lg
 
+if 0 == 1:
+    features_data = lg.get_artist_audio_features_data(name="Frank Zappa")
 
+else:
+    track_data = spdt(aggr_level='track').get_data()
+    track_data.sort_values(by='ts',
+                           inplace=True,
+                           ascending=True)
 
-features_data = lg.get_artist_audio_features_data(name = "Frank Zappa")
+    track_data.to_csv(path_or_buf='data/personal_data/prepared/all_my_tracks_{0}.csv'.format(dt.datetime.now()),
+                      encoding='utf-8')
 
 # my_gui = GUI()
 #
 # my_gui.close()
 
 
-
-
 x = 1  # break
-
-
 
 # # PySpark
 # print(str(datetime.datetime.now()) + ' --- Building Spark Session...')
@@ -28,10 +34,6 @@ x = 1  # break
 #
 # print(str(datetime.datetime.now()) + ' --- Doing stuff... ')
 # df_pyspark.withColumnRenamed('track_name','name').show()
-
-
-
-
 
 
 # user_playlists = spapic.get_all_user_playlists()
@@ -49,8 +51,6 @@ x = 1  # break
 
 
 # my_spoti_data.data.groupby('key').mean().to_csv("mean_by_key.csv")
-
-
 
 
 #
