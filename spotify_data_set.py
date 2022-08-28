@@ -12,14 +12,14 @@ def prepare_audio_analysis_data(df_to_prepare) -> pd.DataFrame:
     modes_replacement_dict = {'from': [0, 1],
                               'to': ['m', 'M']}
 
-    keys_replacement_dict = {'from': np.arange(start=0, stop=12, step=1),
+    keys_replacement_dict = {'from': np.arange(start = 0, stop = 12, step = 1),
                              'to': ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']}
 
-    df_to_prepare['mode'] = df_to_prepare['mode'].replace(to_replace=modes_replacement_dict['from'],
-                                                          value=modes_replacement_dict['to'])
+    df_to_prepare['mode'] = df_to_prepare['mode'].replace(to_replace = modes_replacement_dict['from'],
+                                                          value = modes_replacement_dict['to'])
 
-    df_to_prepare['key'] = df_to_prepare['key'].replace(to_replace=keys_replacement_dict['from'],
-                                                        value=keys_replacement_dict['to'])
+    df_to_prepare['key'] = df_to_prepare['key'].replace(to_replace = keys_replacement_dict['from'],
+                                                        value = keys_replacement_dict['to'])
 
     df_to_prepare['full_key'] = df_to_prepare['key'] + df_to_prepare['mode']
 
@@ -73,8 +73,8 @@ def add_track_id_column(df: pd.DataFrame) -> pd.DataFrame:
     uri_col_idx = new_df.columns.get_loc('spotify_track_uri')
 
     track_ids = new_df['spotify_track_uri'].replace(to_replace = 'spotify:track:',
-                                              value = '',
-                                              regex = True)
+                                                    value = '',
+                                                    regex = True)
 
     new_df.insert(loc = uri_col_idx + 1, column = 'track_id', value = track_ids)
 
@@ -97,7 +97,6 @@ class SpotifyDataSet:
         if aggr_level == 'track':
             self.get_tracks_listen_data(self.data_dir)
 
-
     def get_tracks_listen_data(self) -> pd.DataFrame:
         if self.all_tracks_json_df is None:
             self.all_tracks_json_df = collect_all_tracks_listen_history(self.data_dir)
@@ -105,25 +104,26 @@ class SpotifyDataSet:
 
         return self.all_tracks_json_df
 
-    def get_unique_tracks(self) -> pd.DataFrame:
+    def get_unique_tracks(self, by_column: str = 'spotify_uri') -> pd.DataFrame:
         """
-        Returns IDs of unique tracks that were played, with timestamp set to the first time they were ever played.
-        This removed duplicates based on column 'original_track_id' which must be available in the DataFrame.
-        :return:
+        Return unique tracks that were played, with timestamp set to the first time they were ever played.
+        This removes duplicates based on the column specified in by_column.
+        :param: by_column: Name of the column by which to sort and drop duplicates.
+        :return: Tracks DataFrame, containing only the unique instance of each track.
         """
         all_unique_tracks = self.get_tracks_listen_data().copy()
         # all_unique_tracks['guessed_song_id'] = all_unique_tracks.apply(
         #     lambda row: f'{row[7]}_{row[8]}_{row[9]}')
         all_unique_tracks
 
-        all_unique_tracks = self.get_tracks_listen_data().sort_values(by = ['original_track_id', 'ts'], ascending = True)
+        all_unique_tracks = self.get_tracks_listen_data().sort_values(by = ['original_track_id', 'ts'],
+                                                                      ascending = True)
         all_unique_tracks.drop_duplicates(subset = ['original_track_id'], keep = 'first', inplace = True)
         all_unique_tracks.sort_values(by = 'ts',
                                       inplace = True,
                                       ascending = True)
 
         return all_unique_tracks
-
 
     # def __init__(self, aggr_level='track', data_dir='data/dl_sample_data'):
     #     '''
