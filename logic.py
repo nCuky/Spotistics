@@ -1,11 +1,15 @@
 from spotify_api_client import SpotifyAPIClient as spapi
-from SpotifyDataSet import SpotifyDataSet as spdt
-# import pyspark as sk
-import seaborn as sns  # Plotting
+from spotify_data_set import SpotifyDataSet as spdt
+from datetime import datetime as dt
 import pandas as pd
+import log
 
 
-def get_token(token_path=None):
+# import pyspark as sk
+# import seaborn as sns  # Plotting
+
+
+def get_token(token_path = None):
     if token_path is None:
         token_path = "token"
     token_file = open(token_path, "r")
@@ -14,7 +18,8 @@ def get_token(token_path=None):
     return token_file_text
 
 
-spapic = spapi(token=get_token())
+spapic = spapi(token = get_token())
+my_spdt : spdt
 
 
 def get_artist_audio_features_data(name: str):
@@ -87,11 +92,11 @@ def calc_listen_data_by_key():
     Aggregates all listened tracks by key, and writes it as a csv file
     :return:
     '''
-    my_spoti_data = spdt(aggr_level='track')
+    my_spoti_data = spdt(aggr_level = 'track')
     only_duration = my_spoti_data.data.groupby('key')['duration_ms'].sum()
-    my_results = my_spoti_data.data.drop(columns='duration_ms').groupby('key').mean().assign(
-        duration_ms=only_duration)
-    my_results.to_csv("listen_data_by_key.csv")
+    my_results = my_spoti_data.data.drop(columns = 'duration_ms').groupby('key').mean().assign(
+        duration_ms = only_duration)
+    my_results.to_csv("listen_data_by_key.csv", encoding = 'utf-8-sig')
 
 
 def calc_listen_data_mean_key():
@@ -99,5 +104,27 @@ def calc_listen_data_mean_key():
     Aggregates all listened tracks by mean key
     :return:
     '''
-    my_spoti_data = spdt(aggr_level='track')
+    my_spoti_data = spdt(aggr_level = 'track')
     my_spoti_data.data.groupby('key').mean().to_csv("mean_by_key.csv")
+
+
+def collect_all_tracks_to_file():
+    my_spdt = spdt(aggr_level = 'track')
+    spapic.
+
+    my_spdt.all_tracks_json_df
+    track_data = my_spdt.get_unique_tracks()
+
+    # Writing to CSV file:
+    track_file_path = 'data/personal_data/prepared/all_my_tracks_{0}.csv'.format(dt.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    log.write(log.WRITING_FILE.format(track_file_path))
+    track_data.to_csv(path_or_buf = track_file_path,
+                      encoding = 'utf-8-sig',
+                      index = False)
+    log.write(log.FILE_WRITTEN.format(track_file_path))
+
+    # Writing to Excel doesn't work yet:
+    # track_file_path = 'data/personal_data/prepared/all_my_tracks_{0}.xlsx'.format(dt.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    # log.write(log.WRITING_FILE.format(track_file_path))
+    # track_data.to_excel(track_file_path)
+    # log.write(log.FILE_WRITTEN.format(track_file_path))

@@ -1,15 +1,22 @@
-1. make sure the API returns ALL items and not only the first 100 - send 'offset' parameter to the API function calls
-rewrite all functions so that they use this new logic
-
-2. GUI - 'get audio features' button -> show graph
-
 3. Multi-Threading - when fetching large quantity of data, optimize performance so that it fetches using multi processing.
 
+* Always search for the "original" track ID, saved in 'linked_from' object of a Track.
+See more info here: https://developer.spotify.com/documentation/general/guides/track-relinking-guide/
+In short, need to get the linked_from object for every track, and then take the id attribute and put alongside the "track_id" already there.
 
-
-example playlist, 746 songs: 'ProgPsy Rock and Neo Psy Rock'
-
-
+* column function - from all listen data, for every combination of Artist+Track+Album, find how many instances exist.
 
 ---Audio Features---
 * All Zappa songs - columns graph by key
+
+
+
+
+
+----done---
+* make sure the API returns ALL items and not only the first 100 - send 'offset' parameter to the API function calls
+rewrite all functions so that they use this new logic
+
+* GUI - 'get audio features' button -> show graph
+
+-cancelled- example playlist, 746 songs: 'ProgPsy Rock and Neo Psy Rock'

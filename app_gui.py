@@ -1,9 +1,8 @@
 import tkinter as tk
-# import tkinter.ttk as ttk
-import seaborn as sns
 import logic as lg
 
-class GUI:
+
+class AppGUI:
     '''
     Application GUI manager, built upon "tkinter" library.
     '''

@@ -1,3 +1,4 @@
+import pandas as pd
 import tekore as tk
 
 
@@ -251,3 +252,18 @@ class SpotifyAPIClient:
                                                                               limit=limit)
 
         return pd.DataFrame(data=tracks_with_features)
+
+    def get_original_track_id(self, tracks: pd.DataFrame):
+        unique_tracks = tracks.sort_values(by = 'track_id', ascending = True)
+        unique_tracks.drop_duplicates(subset = 'track_id', keep = 'first', inplace = True)
+
+        full_tracks_paging = self.client.tracks(['track_id'])
+        full_tracks = full_tracks_paging.items
+
+        while full_tracks_paging.next is not None:
+            full_tracks_paging = self.client.next(full_tracks_paging)
+            full_tracks.extend(full_tracks_paging.items)
+
+
+
+
