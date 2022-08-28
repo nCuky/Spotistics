@@ -10,10 +10,10 @@ def prepare_audio_analysis_data(df_to_prepare) -> pd.DataFrame:
     :return: The prepared Spotify data.
     """
     modes_replacement_dict = {'from': [0, 1],
-                              'to': ['m', 'M']}
+                              'to'  : ['m', 'M']}
 
     keys_replacement_dict = {'from': np.arange(start = 0, stop = 12, step = 1),
-                             'to': ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']}
+                             'to'  : ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']}
 
     df_to_prepare['mode'] = df_to_prepare['mode'].replace(to_replace = modes_replacement_dict['from'],
                                                           value = modes_replacement_dict['to'])
@@ -82,7 +82,7 @@ def add_track_id_column(df: pd.DataFrame) -> pd.DataFrame:
 
 
 class SpotifyDataSet:
-    def __init__(self, aggr_level='track', data_dir='data/personal_data/raw_json'):
+    def __init__(self, aggr_level = 'track', data_dir = 'data/personal_data/raw_json'):
         """
         Reads data from Spotify JSON data files into a parse-able dataframe.
         Parameters
@@ -95,7 +95,7 @@ class SpotifyDataSet:
         self.data_dir = data_dir
 
         if aggr_level == 'track':
-            self.get_tracks_listen_data(self.data_dir)
+            self.get_tracks_listen_data()
 
     def get_tracks_listen_data(self) -> pd.DataFrame:
         if self.all_tracks_json_df is None:
@@ -104,7 +104,7 @@ class SpotifyDataSet:
 
         return self.all_tracks_json_df
 
-    def get_unique_tracks(self, by_column: str = 'spotify_uri') -> pd.DataFrame:
+    def get_unique_tracks(self, by_column = ['spotify_track_uri']) -> pd.DataFrame:
         """
         Return unique tracks that were played, with timestamp set to the first time they were ever played.
         This removes duplicates based on the column specified in by_column.
@@ -116,12 +116,14 @@ class SpotifyDataSet:
         #     lambda row: f'{row[7]}_{row[8]}_{row[9]}')
         all_unique_tracks
 
-        all_unique_tracks = self.get_tracks_listen_data().sort_values(by = ['original_track_id', 'ts'],
+        all_unique_tracks = self.get_tracks_listen_data().sort_values(by = [by_column, 'ts'],
                                                                       ascending = True)
-        all_unique_tracks.drop_duplicates(subset = ['original_track_id'], keep = 'first', inplace = True)
+        all_unique_tracks.drop_duplicates(subset = by_column,
+                                          keep = 'first',
+                                          inplace = True)
         all_unique_tracks.sort_values(by = 'ts',
-                                      inplace = True,
-                                      ascending = True)
+                                      ascending = True,
+                                      inplace = True)
 
         return all_unique_tracks
 

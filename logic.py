@@ -19,7 +19,7 @@ def get_token(token_path = None):
 
 
 spapic = spapi(token = get_token())
-my_spdt : spdt
+my_spdt: spdt
 
 
 def get_artist_audio_features_data(name: str):
@@ -110,21 +110,42 @@ def calc_listen_data_mean_key():
 
 def collect_all_tracks_to_file():
     my_spdt = spdt(aggr_level = 'track')
-    spapic.
 
-    my_spdt.all_tracks_json_df
-    track_data = my_spdt.get_unique_tracks()
+    # my_spdt.all_tracks_json_df
+    track_data = my_spdt.get_tracks_listen_data()
 
     # Writing to CSV file:
-    track_file_path = 'data/personal_data/prepared/all_my_tracks_{0}.csv'.format(dt.now().strftime("%Y-%m-%d_%H-%M-%S"))
-    log.write(log.WRITING_FILE.format(track_file_path))
-    track_data.to_csv(path_or_buf = track_file_path,
-                      encoding = 'utf-8-sig',
-                      index = False)
-    log.write(log.FILE_WRITTEN.format(track_file_path))
+    track_file_name = 'all_my_tracks_{0}.csv'
 
-    # Writing to Excel doesn't work yet:
-    # track_file_path = 'data/personal_data/prepared/all_my_tracks_{0}.xlsx'.format(dt.now().strftime("%Y-%m-%d_%H-%M-%S"))
-    # log.write(log.WRITING_FILE.format(track_file_path))
-    # track_data.to_excel(track_file_path)
-    # log.write(log.FILE_WRITTEN.format(track_file_path))
+    write_df_to_file(track_data, track_file_name)
+
+
+def collect_unique_tracks_triplets_to_file():
+    my_spdt = spdt(aggr_level = 'track')
+
+    # my_spdt.all_tracks_json_df
+    track_data = my_spdt.get_unique_tracks(
+        by_column = ['master_metadata_track_name',
+                     'master_metadata_album_artist_name',
+                     'master_metadata_album_album_name'])
+
+    # Writing to CSV file:
+    track_file_name = 'unique_tracks_triplets_{0}.csv'
+
+    write_df_to_file(track_data, track_file_name)
+
+
+def write_df_to_file(df: pd.DataFrame, file_name: str) -> None:
+    """
+    Writes a given DataFrame to a file.
+    :param file_name: Name of the desired file to write (without preceding path).
+    :return: None.
+    """
+    file_path = 'data/personal_data/prepared/' + file_name.format(dt.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    log.write(log.WRITING_FILE.format(file_path))
+    df.to_csv(path_or_buf = file_path,
+              encoding = 'utf-8-sig',
+              index = False)
+    log.write(log.FILE_WRITTEN.format(file_path))
+
+    # Writing to Excel doesn't work yet.

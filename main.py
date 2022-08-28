@@ -9,7 +9,8 @@ import logic as lg
 if 0 == 1:
     features_data = lg.get_artist_audio_features_data(name = "Frank Zappa")
 else:
-    lg.collect_all_tracks_to_file()
+    # lg.collect_all_tracks_to_file()
+    lg.collect_unique_tracks_triplets_to_file()
 
 
 
