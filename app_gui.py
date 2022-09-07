@@ -60,8 +60,8 @@ class AppGUI:
         self.window.mainloop()
 
         # # SeaBorn logic
-        # df = sns.load_dataset("penguins")
-        # sns.pairplot(df, hue="species")
+        # updated_df = sns.load_dataset("penguins")
+        # sns.pairplot(updated_df, hue="species")
 
     def close(self):
         self.window.destroy()
