@@ -1,5 +1,13 @@
 import pandas as pd
 import tekore as tk
+from dataclasses import dataclass
+
+
+@dataclass(frozen = True)
+class AttrNames:
+    TRACK_ID = 'track_id'
+    ARTIST = 'artist'
+    CONN_COUNTRY = 'conn_country'
 
 
 class SpotifyAPIClient:
@@ -16,14 +24,14 @@ class SpotifyAPIClient:
     def __init__(self,
                  token):
         self.app_token: tk.RefreshingToken() = None
-        self.client = tk.Spotify(token=self.get_app_token(token),
-                                 max_limits_on=True,
-                                 chunked_on=True)
+        self.client = tk.Spotify(token = self.get_app_token(token),
+                                 max_limits_on = True,
+                                 chunked_on = True)
 
     # region Connection logic
 
     def get_app_token(self,
-                      token=None) -> tk.RefreshingToken:
+                      token = None) -> tk.RefreshingToken:
         if token is not None:
             cl_id = token[0].strip()
             cl_secret = token[1].strip()
@@ -33,9 +41,9 @@ class SpotifyAPIClient:
         return self.app_token
 
     def connect(self) -> None:
-        self.client = tk.Spotify(token=self.get_app_token(),
-                                 max_limits_on=True,
-                                 chunked_on=True)
+        self.client = tk.Spotify(token = self.get_app_token(),
+                                 max_limits_on = True,
+                                 chunked_on = True)
 
     def disconnect(self) -> None:
         if self.is_connected():
@@ -53,13 +61,12 @@ class SpotifyAPIClient:
 
     # endregion
 
-    def get_all_user_playlists(self, limit=50):
+    def get_all_user_playlists(self, limit = 50):
         self.validate_connection()
 
-        response = self.client.playlists(user_id=self.client.current_user().id,
-                                         limit=limit)
+        response = self.client.playlists(user_id = self.client.current_user().id,
+                                         limit = limit)
         results = response['items']
-        # offset = limit
 
         while response.next is not None:
             results.extend(response.next())
@@ -68,16 +75,16 @@ class SpotifyAPIClient:
 
     def playlist_get_all_tracks(self,
                                 playlist_id: list,
-                                limit=MAX_TRACKS_FOR_PLAYLIST_ITEMS):
+                                limit = MAX_TRACKS_FOR_PLAYLIST_ITEMS):
         self.validate_connection()
 
-        response = self.client.playlist_items(playlist_id, limit=limit)
+        response = self.client.playlist_items(playlist_id, limit = limit)
         results = response['items']
         offset = limit
         while response['next'] is not None:
             response = self.client.playlist_items(playlist_id,
-                                                  limit=limit,
-                                                  offset=offset)
+                                                  limit = limit,
+                                                  offset = offset)
             results.extend(response['items'])
             offset += limit
 
@@ -91,8 +98,8 @@ class SpotifyAPIClient:
         self.validate_connection()
 
         result = self.client.search(name,
-                                    types=('artist',),
-                                    limit=1)
+                                    types = (AttrNames.ARTIST,),
+                                    limit = 1)
 
         return result[0].items[0]
 
@@ -125,8 +132,8 @@ class SpotifyAPIClient:
                               artist_id: str) -> tk.model.ModelList:
         self.validate_connection()
 
-        albums_paging = self.client.artist_albums(artist_id=artist_id,
-                                                  include_groups=[tk.model.AlbumGroup.album, ])
+        albums_paging = self.client.artist_albums(artist_id = artist_id,
+                                                  include_groups = [tk.model.AlbumGroup.album, ])
         all_albums = albums_paging.items
 
         while albums_paging.next is not None:
@@ -144,7 +151,7 @@ class SpotifyAPIClient:
         '''
         self.validate_connection()
 
-        tracks_paging = self.client.album_tracks(album_id=album_id)
+        tracks_paging = self.client.album_tracks(album_id = album_id)
         all_tracks = tracks_paging.items
 
         while tracks_paging.next is not None:
@@ -158,31 +165,6 @@ class SpotifyAPIClient:
 
         return all_tracks
 
-    # def get_all_recently_played_tracks(self,
-    #                                    max_tracks_amount = MAX_TRACKS_AMOUNT_FOR_RECENTLY_PLAYED,
-    #                                    batch_size = MAX_TRACKS_BATCH_SIZE_FOR_RECENTLY_PLAYED):
-    #     """
-    #     Returns a large number of the user's recently played tracks.
-    #     :param max_tracks_amount:
-    #     :param batch_size:
-    #     :return:
-    #     """
-    #     self.validate_connection()
-    #     response = self.client.current_user_recently_played(limit = batch_size)
-    #
-    #     results = response['items']
-    #     next_batch_before_timestamp = response['cursors']['before']
-    #
-    #     while  (response['next'] is not None) \
-    #         or (len(results) <= max_tracks_amount):
-    #         response = self.client.current_user_recently_played(limit = batch_size,
-    #                                                             before = next_batch_before_timestamp)
-    #
-    #         results.extend(response['items'])
-    #         next_batch_before_timestamp = response['cursors']['before']
-    #
-    #     return results
-
     def get_tracks_audio_features(self,
                                   tracks_ids: list):
         '''
@@ -192,7 +174,7 @@ class SpotifyAPIClient:
         '''
         self.validate_connection()
 
-        all_features = self.client.tracks_audio_features(track_ids=tracks_ids)
+        all_features = self.client.tracks_audio_features(track_ids = tracks_ids)
 
         return all_features
 
@@ -235,35 +217,72 @@ class SpotifyAPIClient:
 
         return analyses
 
-    def create_tracks_data_frame(self, tracks_items: list,
-                                 audio_features_names: list,
-                                 limit=MAX_TRACKS_FOR_FEATURES):
+    def create_df_full_tracks(self, tracks_items: list,
+                              audio_features_names: list,
+                              limit = MAX_TRACKS_FOR_FEATURES) -> pd.DataFrame:
         self.validate_connection()
-        tracks_with_features = {'track_name': get_tracks_names(tracks_items)}
 
-        test_artists_list = get_tracks_artists(tracks_items)
-
+        # tracks_with_features = {'track_name': get_tracks_names(tracks_items)}
+        #
+        # test_artists_list = get_tracks_artists(tracks_items)
+        #
         # tracks_with_features['artist'] =
+        #
+        # for feat_name in audio_features_names:
+        #     # Inserting a new column, titled feat_name, containing a list of all the audio features for all the tracks:
+        #     tracks_with_features[feat_name] = self.get_specific_audio_feature(tracks_items,
+        #                                                                       audio_feature = feat_name,
+        #                                                                       limit = limit)
+        #
+        # return pd.DataFrame(data = tracks_with_features)
 
-        for feat_name in audio_features_names:
-            # Inserting a new column, titled feat_name, containing a list of all the audio features for all the tracks:
-            tracks_with_features[feat_name] = self.get_specific_audio_feature(tracks_items,
-                                                                              audio_feature=feat_name,
-                                                                              limit=limit)
+    def get_relinked_tracks_ids(self, original_tracks: pd.DataFrame) -> tk.model.ModelList:
+        """
+        Returns a Series of all Relinked Tracks' IDs (as in, the parent of a given 'LinkedFrom' track),
+        for the given Tracks' IDs.
+        :param original_tracks: DataFrame containing the original Tracks' IDs and their corresponding market.
+        :return: Series with RelinkedTrackID for each given TrackID.
+        """
+        x = 1
 
-        return pd.DataFrame(data=tracks_with_features)
+        tracks_for_markets_grp = original_tracks.groupby(by = AttrNames.CONN_COUNTRY, sort = False)
 
-    def get_original_track_id(self, tracks: pd.DataFrame):
-        unique_tracks = tracks.sort_values(by = 'track_id', ascending = True)
-        unique_tracks.drop_duplicates(subset = 'track_id', keep = 'first', inplace = True)
+        unique_tracks_for_markets = tracks_for_markets_grp[AttrNames.TRACK_ID].unique()
 
-        full_tracks_paging = self.client.tracks(['track_id'])
-        full_tracks = full_tracks_paging.items
+        # Collecting API properties for all the required tracks in all required markets:
+        for conn_country_tracks in unique_tracks_for_markets.items():
+            country_full_tracks = self.client.tracks(track_ids = conn_country_tracks[1],
+                                                     market = conn_country_tracks[0])
 
-        while full_tracks_paging.next is not None:
-            full_tracks_paging = self.client.next(full_tracks_paging)
-            full_tracks.extend(full_tracks_paging.items)
+            # curr_full_tracks = curr_full_tracks_paging
+            #
+            # while curr_full_tracks_paging.next is not None:
+            #     curr_full_tracks_paging = self.client.next(curr_full_tracks_paging)
+            #     curr_full_tracks.extend(curr_full_tracks_paging.items)
+
+            # track_gen = (track for track in country_full_tracks)
+            # track_nexter = next(track_gen)
+            # filter = (
+            #     track_nexter['id']
+            #     if track_nexter['linked_from'] is not None
+            #     else track_nexter['linked_from']['id']
+            # )
+
+            all_relinked_tracks = list(filter)
+
+            for curr_full_track in country_full_tracks:
+                if curr_full_track.linked_from is not None:
+                    # In this case, the 'ID' field means 'Relinked ID'. I need to keep it:
+                    curr_full_track.id
 
 
 
+        # Adding 'Linked From' column to the tracks dataframe:
 
+    def add_relinked_track_id(self, tracks_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Adds a column with the Relinked Track ID for each given Track.
+        If no relinked track is available, it puts the original track ID.
+        :param tracks_df:
+        :return:
+        """
