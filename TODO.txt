@@ -1,8 +1,5 @@
 3. Multi-Threading - when fetching large quantity of data, optimize performance so that it fetches using multi processing.
 
-* Always search for the "original" track ID, saved in 'linked_from' object of a Track.
-See more info here: https://developer.spotify.com/documentation/general/guides/track-relinking-guide/
-In short, need to get the linked_from object for every track, and then take the id attribute and put alongside the "track_id" already there.
 
 * column function - from all listen data, for every combination of Artist+Track+Album, find how many instances exist.
 
@@ -10,7 +7,13 @@ In short, need to get the linked_from object for every track, and then take the 
 * All Zappa songs - columns graph by key
 
 
-
+Always search for the "original" track ID, saved in 'linked_from' object of a Track.
+See more info here: https://developer.spotify.com/documentation/general/guides/track-relinking-guide/
+In short, need to get the linked_from object for every track, and then take the id attribute and put alongside the "track_id" already there.
+---- This is difficult, as no TrackID can be considered "the original". The 'linked from' ID is relative to market and there is no single
+market that I can depend on.
+Also, it is not 100% guaranteed that there will even be a 'LinkedTrack' for a given track, even if it reasonably "should" be.
+Instead, I use the combination of Artist-Album-Title.
 
 
 ----done---
@@ -20,3 +23,5 @@ rewrite all functions so that they use this new logic
 * GUI - 'get audio features' button -> show graph
 
 -cancelled- example playlist, 746 songs: 'ProgPsy Rock and Neo Psy Rock'
+
+

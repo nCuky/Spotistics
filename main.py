@@ -32,10 +32,10 @@ x = 1  # break
 # df_pyspark.withColumnRenamed('track_name','name').show()
 
 
-# user_playlists = spapic.get_all_user_playlists()
+# user_playlists = my_spapi.get_all_user_playlists()
 # test_plst = find_playlist(user_playlists, "Erez and Nadav")
-# test_plst_tracks = spapic.get_all_playlist_tracks(test_plst)
-# test_df = spapic.create_tracks_data_frame(tracks_items = test_plst_tracks,
+# test_plst_tracks = my_spapi.get_all_playlist_tracks(test_plst)
+# test_df = my_spapi.create_tracks_data_frame(tracks_items = test_plst_tracks,
 #                                               audio_features_names = ['instrumentalness', 'energy', 'danceability', 'acousticness', 'tempo'])
 
 

@@ -1,5 +1,5 @@
 from spotify_api_client import SpotifyAPIClient as spapi
-from spotify_data_set import SpotifyDataSet as spdt
+import spotify_data_set as spdt
 from datetime import datetime as dt
 import pandas as pd
 import log
@@ -18,15 +18,15 @@ def get_token(token_path = None):
     return token_file_text
 
 
-spapic = spapi(token = get_token())
-my_spdt: spdt
+my_spapi = spapi(token = get_token())
+my_spdt: spdt.SpotifyDataSet
 
 
 def get_artist_audio_features_data(name: str):
-    artist_id = spapic.find_artist(name).id
-    tracks = spapic.artist_get_all_tracks(artist_id)
+    artist_id = my_spapi.find_artist(name).id
+    tracks = my_spapi.artist_get_all_tracks(artist_id)
     tracks_ids = [track.id for track in tracks]
-    tracks_features = spapic.get_tracks_audio_features(tracks_ids)
+    tracks_features = my_spapi.get_tracks_audio_features(tracks_ids)
 
     pd.read_json()
 
@@ -72,8 +72,6 @@ def get_tracks_artists(tracks_items: list):
     out = list()
 
     for trk in tracks_items:
-        # curr_trk = dict()
-
         curr_artists = dict()
 
         for i, artist in enumerate(trk['track']['artists']):
@@ -92,7 +90,7 @@ def calc_listen_data_by_key():
     Aggregates all listened tracks by key, and writes it as a csv file
     :return:
     '''
-    my_spoti_data = spdt(aggr_level = 'track')
+    my_spoti_data = spdt.SpotifyDataSet(aggr_level = spdt.SpotifyDataSet.AGG_LEVEL_TRACK)
     only_duration = my_spoti_data.data.groupby('key')['duration_ms'].sum()
     my_results = my_spoti_data.data.drop(columns = 'duration_ms').groupby('key').mean().assign(
         duration_ms = only_duration)
@@ -104,14 +102,14 @@ def calc_listen_data_mean_key():
     Aggregates all listened tracks by mean key
     :return:
     '''
-    my_spoti_data = spdt(aggr_level = 'track')
+    my_spoti_data = spdt.SpotifyDataSet(aggr_level = spdt.SpotifyDataSet.AGG_LEVEL_TRACK)
     my_spoti_data.data.groupby('key').mean().to_csv("mean_by_key.csv")
 
 
 def collect_all_tracks_to_file():
-    my_spdt = spdt(aggr_level = 'track')
+    my_spdt = spdt.SpotifyDataSet(aggr_level = spdt.SpotifyDataSet.AGG_LEVEL_TRACK)
 
-    # my_spdt.all_tracks_json_df
+    # my_spdt.all_tracks_df
     track_data = my_spdt.get_tracks_listen_data()
 
     # Writing to CSV file:
@@ -121,19 +119,28 @@ def collect_all_tracks_to_file():
 
 
 def collect_unique_tracks_triplets_to_file():
-    my_spdt = spdt(aggr_level = 'track')
+    my_spdt = spdt.SpotifyDataSet(aggr_level = spdt.SpotifyDataSet.AGG_LEVEL_TRACK)
 
-    # my_spdt.all_tracks_json_df
-    track_data = my_spdt.get_unique_tracks(
-        by_column = ['master_metadata_track_name',
-                     'master_metadata_album_artist_name',
-                     'master_metadata_album_album_name'])
+    # unique_tracks_ids = my_spdt.get_unique_tracks(by_column = spdt.ColNames.TRACK_ID)
+
+    my_spapi.get_relinked_tracks_ids(original_tracks = my_spdt.get_tracks_listen_data())
+
+    track_data = my_spdt.get_unique_tracks(by_column = spdt.TRACK_ID_COMBO_COL)
 
     # Writing to CSV file:
     track_file_name = 'unique_tracks_triplets_{0}.csv'
 
     write_df_to_file(track_data, track_file_name)
 
+
+def count_unique_tracks(tracks_df: pd.DataFrame) -> pd.DataFrame:
+    tracks_count = tracks_df.groupby(spdt.SpotifyDataSet.TRACK_ID_COMBO_COL).size().reset_index(
+        name = spdt.ColNames.TIMES_LISTENED)
+
+    # another way, returning Series
+    # tracks_count = tracks_df.value_counts(subset = spdt.SpotifyDataSet.TRACK_ID_COMBO_COL)
+
+    return tracks_count
 
 def write_df_to_file(df: pd.DataFrame, file_name: str) -> None:
     """
