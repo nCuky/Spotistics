@@ -7,13 +7,19 @@
 * All Zappa songs - columns graph by key
 
 
-Always search for the "original" track ID, saved in 'linked_from' object of a Track.
+* Ver.1: Always search for the "original" track ID, saved in 'linked_from' object of a Track.
 See more info here: https://developer.spotify.com/documentation/general/guides/track-relinking-guide/
-In short, need to get the linked_from object for every track, and then take the id attribute and put alongside the "track_id" already there.
----- This is difficult, as no TrackID can be considered "the original". The 'linked from' ID is relative to market and there is no single
-market that I can depend on.
+  In short, need to get the relinked_id for every track, and then put alongside the "track_id" already there (considered the "original_id").
+* Ver.2: This is difficult, as no TrackID can be considered "the original". The relinked ID is relative to market and there is no single
+market that I can depend on, which is considered "the absolute" market.
 Also, it is not 100% guaranteed that there will even be a 'LinkedTrack' for a given track, even if it reasonably "should" be.
-Instead, I use the combination of Artist-Album-Title.
+Instead, I use the combination of "Artist name + Album name + Track Title", known as "TrackCombo".
+* Ver.3: Compromise and final decision:
+0. *** IMPORTANT NOTICE *** The philosophical question of "What is considered a Song" is a very complicated question
+which I can't and won't solve right now.
+1. For every "TrackCombo", collect all distinct track_id values and put them in an Array for that TrackCombo.
+2. Create a new column in the 'all_tracks' dataframe, named 'unified_track_id'
+
 
 
 ----done---

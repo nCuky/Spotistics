@@ -1,17 +1,16 @@
-
 from spotify_data_set import SpotifyDataSet as spdt
 
 # from pyspark.sql import SparkSession
 import pandas as pd
 # from app_gui import AppGUI as AppGUI
-import logic as lg
+from logic import Logic as lg
 
-if 0 == 1:
-    features_data = lg.get_artist_audio_features_data(name = "Frank Zappa")
-else:
-    # lg.collect_all_tracks_to_file()
-    lg.collect_unique_tracks_triplets_to_file()
+my_lg = lg()
 
+# features_data = my_lg.get_artist_audio_features_data(name = "Frank Zappa")
+# my_lg.collect_all_tracks_to_file()
+
+my_lg.collect_unique_tracks_triplets_to_file()
 
 
 # my_gui = AppGUI()

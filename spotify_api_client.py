@@ -243,8 +243,6 @@ class SpotifyAPIClient:
         :param original_tracks: DataFrame containing the original Tracks' IDs and their corresponding market.
         :return: Series with RelinkedTrackID for each given TrackID.
         """
-        x = 1
-
         tracks_for_markets_grp = original_tracks.groupby(by = AttrNames.CONN_COUNTRY, sort = False)
 
         unique_tracks_for_markets = tracks_for_markets_grp[AttrNames.TRACK_ID].unique()
@@ -275,14 +273,50 @@ class SpotifyAPIClient:
                     # In this case, the 'ID' field means 'Relinked ID'. I need to keep it:
                     curr_full_track.id
 
+            # region temporary test
 
+            def temp_test():
+                file_name = "techcrunch.csv"
+                lines = (line for line in open(file_name))
+                list_line = (s.rstrip().split(",") for s in lines)
+                cols = next(list_line)
+                company_dicts = (dict(zip(cols, data)) for data in list_line)
+                funding = (
+                    int(company_dict["raisedAmt"])
+                    for company_dict in company_dicts
+                    if company_dict["round"] == "a"
+                )
+                total_series_a = sum(funding)
+                print(f"Total series A fundraising: ${total_series_a}")
 
-        # Adding 'Linked From' column to the tracks dataframe:
+            # endregion
 
-    def add_relinked_track_id(self, tracks_df: pd.DataFrame) -> pd.DataFrame:
+        # todo Add 'Linked From' column to the tracks dataframe
+
+    def determine_known_track_id(self, tracks: pd.Series) -> pd.DataFrame:
         """
-        Adds a column with the Relinked Track ID for each given Track.
-        If no relinked track is available, it puts the original track ID.
-        :param tracks_df:
-        :return:
+        For each track in the given dataframe, determine the single TrackID that is known to be valid and available,
+        and add a new column with the determined values.
+        A TrackID is considered as "known" in those cases:
+         * its 'available_markets' property contains the user's country;
+         * it is available as a Relinked Track for the original TrackID.
+        If it is not available anywhere, a NaN is put as an indication for that.
+        :param tracks: Series of all the required tracks
+        :return: Copy of the given dataframe, with an additional column for KnownTrackID.
         """
+        unique_tracks = tracks.unique()
+
+        independent_tracks = self.client.tracks(track_ids = unique_tracks.tolist(),
+                                                # market = self.client.current_user().country
+                                                )
+
+        dead_tracks = pd.Series()
+        available_tracks = pd.Series()
+
+        for track in independent_tracks:
+            if tracks.items['available_markets'] is not None \
+                    and self.client.current_user().country in tracks.items['available_markets']:
+                available_tracks.append(track.items['id'])
+
+            else:
+                dead_tracks.append(track.items['id'])

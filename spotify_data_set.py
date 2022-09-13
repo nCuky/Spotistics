@@ -7,9 +7,13 @@ from dataclasses import dataclass
 
 @dataclass(frozen = True)
 class ColNames:
+    TIMESTAMP = 'ts'
+    MS_PLAYED = 'ms_played'
     ALBUM_ARTIST_NAME = 'album_artist_name'
     ALBUM_NAME = 'album_name'
     TRACK_NAME = 'track_name'
+    TRACK_ID = 'track_id'
+    TRACK_KNOWN_ID = 'track_known_id'
     TRACK_URI = 'spotify_track_uri'
     CONN_COUNTRY = 'conn_country'
     TIMES_LISTENED = 'times_listened'
@@ -17,16 +21,18 @@ class ColNames:
     IP_ADDRESS = 'ip_addr_decrypted'
     USER_AGENT = 'user_agent_decrypted'
     INCOGNITO = 'incognito_mode'
-
+    SONG_MODE = 'mode'
+    SONG_KEY = 'key'
+    SONG_FULL_KEY = 'full_key'
 
 
 class SpotifyDataSet:
     """
     Manages Spotify Data (originating from local JSON files), as pandas DataFrames.
     """
-    TRACK_ID_COMBO_COL = [ColNames.ALBUM_ARTIST_NAME,
-                          ColNames.ALBUM_NAME,
-                          ColNames.TRACK_NAME]
+    TRACK_ID_COMBO_COL = [ColNames.TRACK_NAME,
+                          ColNames.ALBUM_ARTIST_NAME,
+                          ColNames.ALBUM_NAME]
 
     COLUMNS_TO_RENAME = {'master_metadata_track_name'       : ColNames.TRACK_NAME,
                          'master_metadata_album_artist_name': ColNames.ALBUM_ARTIST_NAME,
@@ -34,58 +40,7 @@ class SpotifyDataSet:
 
     AGG_LEVEL_TRACK = 'track'
 
-    def __init__(self, aggr_level = AGG_LEVEL_TRACK, data_dir = 'data/personal_data/raw_json'):
-        """
-        Reads data from Spotify JSON data files into a parse-able dataframe.
-        Parameters
-        ----------
-        aggr_level: Which dataset to load ('track', 'artist', 'genres', 'year', 'w_genres').
-        data_dir: Directory of the data files. Can be 'data/dl_sample_data' for the downloaded sample,
-        or 'data/personal_data' for my personal account data.
-        """
-        self.all_tracks_df: pd.DataFrame() = None
-        self.data_dir = data_dir
-
-        if aggr_level == 'track':
-            self.get_tracks_listen_data()
-
-    def get_tracks_listen_data(self) -> pd.DataFrame:
-        if self.all_tracks_df is None:
-            self.all_tracks_df = self.collect_all_tracks_listen_history(self.data_dir)
-
-            # Cleaning and preparing the data:
-            SpotifyDataSet.add_track_id_column(self.all_tracks_df)
-            SpotifyDataSet.rename_master_metadata_columns(self.all_tracks_df)
-            self.all_tracks_df.drop(columns = [ColNames.USERNAME, ColNames.IP_ADDRESS, ColNames.USER_AGENT])
-
-        return self.all_tracks_df
-
-    def get_unique_tracks(self, by_column = [ColNames.TRACK_URI]) -> pd.DataFrame:
-        """
-        Return unique tracks that were played, with timestamp set to the first time they were ever played.
-        This removes duplicates based on the column specified in by_column.
-        :param: by_column: Name of the column by which to sort and drop duplicates.
-        :return: Tracks DataFrame, containing only the unique instance of each track.
-        """
-        # all_unique_tracks = self.get_tracks_listen_data().copy()
-        # all_unique_tracks['guessed_song_id'] = all_unique_tracks.apply(
-        #     lambda row: f'{row[7]}_{row[8]}_{row[9]}')
-
-        # all_unique_tracks = self.get_tracks_listen_data().sort_values(by = [by_column, 'ts'],
-
-        all_unique_tracks = self.get_tracks_listen_data().sort_values(by = by_column,
-                                                                      ascending = True,
-                                                                      inplace = False)
-
-        all_unique_tracks.drop_duplicates(subset = by_column,
-                                          keep = 'first',
-                                          inplace = True)
-
-        all_unique_tracks.sort_values(by = 'ts',
-                                      ascending = True,
-                                      inplace = True)
-
-        return all_unique_tracks
+    # region Utility Methods
 
     @staticmethod
     def collect_all_tracks_listen_history(data_dir: str) -> pd.DataFrame:
@@ -95,8 +50,9 @@ class SpotifyDataSet:
         :return: DataFrame of all Tracks Listen history, sorted by ascending timestamp.
         """
         track_file_idx = 0
-        all_tracks_json_df: pd.DataFrame() = None
+        all_tracks_json_df: pd.DataFrame = None
 
+        # Trying to read all 'Track Listen History' files that are available in the given folder:
         while track_file_idx >= 0:
             curr_tracks_json_df = None
 
@@ -106,7 +62,7 @@ class SpotifyDataSet:
             if os.path.isfile(file_path):
                 log.write(log.READING_FILE.format(track_file_name))
 
-                curr_tracks_json_df = pd.read_json(file_path)
+                curr_tracks_json_df = pd.read_json(file_path, encoding = 'utf-8')
 
             if curr_tracks_json_df is None:
                 track_file_idx = -1
@@ -114,13 +70,13 @@ class SpotifyDataSet:
                 log.write(log.NONEXISTENT_FILE.format(track_file_name))
 
             else:
-                all_tracks_json_df = curr_tracks_json_df if all_tracks_json_df is None \
+                all_tracks_json_df = curr_tracks_json_df.copy() if all_tracks_json_df is None \
                     else pd.concat([all_tracks_json_df, curr_tracks_json_df])
 
                 track_file_idx += 1
 
         if all_tracks_json_df is not None:
-            all_tracks_json_df.sort_values(by = 'ts',
+            all_tracks_json_df.sort_values(by = ColNames.TIMESTAMP,  # 'ts'
                                            inplace = True,
                                            ascending = True)
 
@@ -133,20 +89,20 @@ class SpotifyDataSet:
         :param updated_df: Dataframe with tracks listen history.
         :return: Updated dataframe with additional column 'track_id'.
         """
-        uri_col_idx = updated_df.columns.get_loc(ColNames.TRACK_URI)
+        col_idx_to_insert = updated_df.columns.get_loc(ColNames.TRACK_URI) + 1
 
         track_ids = updated_df[ColNames.TRACK_URI].replace(to_replace = 'spotify:track:',
                                                            value = '',
                                                            regex = True)
 
-        updated_df.insert(loc = uri_col_idx + 1,
-                          column = 'track_id',
+        updated_df.insert(loc = col_idx_to_insert,
+                          column = ColNames.TRACK_ID,  # 'track_id'
                           value = track_ids)
 
     @staticmethod
     def rename_master_metadata_columns(updated_df: pd.DataFrame) -> None:
-        updated_df.rename(columns = SpotifyDataSet.COLUMNS_TO_RENAME, inplace = True)
-
+        updated_df.rename(columns = SpotifyDataSet.COLUMNS_TO_RENAME,
+                          inplace = True)
 
     @staticmethod
     def prepare_audio_analysis_data(updated_df: pd.DataFrame) -> None:
@@ -160,26 +116,87 @@ class SpotifyDataSet:
         keys_replacement_dict = {'from': np.arange(start = 0, stop = 12, step = 1),
                                  'to'  : ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']}
 
-        updated_df['mode'] = updated_df['mode'].replace(to_replace = modes_replacement_dict['from'],
-                                                        value = modes_replacement_dict['to'])
+        # Preparing the song's Mode (Modus, i.e. Major (uppercase 'M') / Minor (lowercase 'm'):
+        updated_df[ColNames.SONG_MODE] = updated_df[ColNames.SONG_MODE].replace(
+            to_replace = modes_replacement_dict['from'],
+            value = modes_replacement_dict['to'])
 
-        updated_df['key'] = updated_df['key'].replace(to_replace = keys_replacement_dict['from'],
-                                                      value = keys_replacement_dict['to'])
+        # Preparing the song's Key (e.g. 'C#'):
+        updated_df[ColNames.SONG_KEY] = updated_df[ColNames.SONG_KEY].replace(
+            to_replace = keys_replacement_dict['from'],
+            value = keys_replacement_dict['to'])
 
-        updated_df['full_key'] = updated_df['key'] + updated_df['mode']
+        updated_df[ColNames.SONG_FULL_KEY] = updated_df[ColNames.SONG_KEY] + updated_df[ColNames.SONG_MODE]
 
-    # def __init__(self, aggr_level='track', data_dir='data/dl_sample_data'):
-    #     '''
-    #     Reads data from Spotify CSV data files into a parse-able dataframe.
-    #     :param aggr_level: Which dataset to load ('track', 'artist', 'genres', 'year', 'w_genres')
-    #     :param data_dir: Directory of the data files. Can be 'data/dl_sample_data' for the downloaded sample,
-    #     or 'data/personal_data' for my personal account data.
-    #     '''
-    #     dict_file_names = {'track': "data.csv",
-    #                        'artist': "data_by_artist.csv",
-    #                        'genres': "data_by_genres.csv",
-    #                        'year': "data_by_year.csv",
-    #                        'w_genres': "data_w_genres.csv"}
-    #
-    #     file_path = data_dir + '/' + dict_file_names[aggr_level]
-    #     self.data = prepare_audio_analysis_data(pd.read_csv(file_path))
+    # endregion Utility Methods
+
+    def __init__(self, aggr_level = AGG_LEVEL_TRACK, data_dir = 'data/personal_data/raw_json'):
+        """
+        Reads data from Spotify JSON data files into a parse-able dataframe.
+        Parameters
+        ----------
+        aggr_level: Which dataset to load ('track', 'artist', 'genres', 'year', 'w_genres').
+        data_dir: Directory of the data files. Can be 'data/dl_sample_data' for the downloaded sample,
+        or 'data/personal_data' for my personal account data.
+        """
+        # self.all_tracks_df: pd.DataFrame
+        self.data_dir = data_dir
+
+        if aggr_level == SpotifyDataSet.AGG_LEVEL_TRACK:
+            self.all_tracks_df = self.get_tracks_listen_data()
+
+    # region Instance Logic
+
+    def get_tracks_listen_data(self) -> pd.DataFrame:
+        if self.all_tracks_df is None:
+            self.all_tracks_df = SpotifyDataSet.collect_all_tracks_listen_history(self.data_dir)
+
+            # Cleaning and preparing the data:
+            SpotifyDataSet.add_track_id_column(self.all_tracks_df)
+            SpotifyDataSet.rename_master_metadata_columns(self.all_tracks_df)
+            self.all_tracks_df.drop(columns = [ColNames.USERNAME, ColNames.IP_ADDRESS, ColNames.USER_AGENT])
+
+        return self.all_tracks_df
+
+    def get_distinct_tracks(self) -> pd.Dataframe:
+        """
+        Return distinct tracks, based on the KnownTrackID column (must make sure beforehand that it exists!).
+        :return: Dataframe, containing the unique instance of each track.
+        """
+        col_combo = [ColNames.ALBUM_ARTIST_NAME, ColNames.ALBUM_NAME, ColNames.TRACK_NAME, ColNames.TRACK_ID]
+        unique_tracks = self.all_tracks_df.sort_values(by = col_combo,
+                                                       ascending = True,
+                                                       inplace = False)
+
+        unique_tracks_ids = unique_tracks.drop_duplicates(subset = col_combo,
+                                      keep = 'first',
+                                      inplace = True)[ColNames.TRACK_ID]
+
+        unique_tracks.sort_values(by = ColNames.TIMESTAMP,
+                                  ascending = True,
+                                  inplace = True)
+
+        # todo fix
+        all_unique_tracks = pd.DataFrame()
+
+        return all_unique_tracks
+
+    def add_known_track_id(self, known_tracks_ids_map: dict) -> None:
+        col_idx_to_insert = self.all_tracks_df.columns.get_loc(ColNames.TRACK_ID) + 1
+
+        # self.all_tracks_df[ColNames.KNOWN_TRACK_ID]
+        # self.all_tracks_df =
+        # self.all_tracks_df.assign(known_tracks_ids_map.get(self.all_tracks_df[ColNames.TRACK_ID]))
+
+        # Making sure that any track_id values that are missing in the mapping get mapped to themselves:
+        unique_track_ids = self.all_tracks_df[ColNames.TRACK_ID].unique()
+        updated_map = dict(zip(unique_track_ids, unique_track_ids))
+        updated_map.update(known_tracks_ids_map)
+
+        column_known_track_id = self.all_tracks_df[ColNames.TRACK_ID].map(updated_map)
+
+        self.all_tracks_df.insert(loc = col_idx_to_insert,
+                                  column = ColNames.TRACK_KNOWN_ID,
+                                  value = column_known_track_id)
+
+    # endregion Instance Logic
