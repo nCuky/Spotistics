@@ -86,7 +86,7 @@ class SpotifyDataSet:
     def add_track_id_column(updated_df: pd.DataFrame) -> None:
         """
         Adds a 'track_id' column based on the values of 'spotify_track_uri' column.
-        :param updated_df: Dataframe with tracks listen history.
+        :param updated_df: DataFrame with tracks listen history.
         :return: Updated dataframe with additional column 'track_id'.
         """
         col_idx_to_insert = updated_df.columns.get_loc(ColNames.TRACK_URI) + 1
@@ -141,6 +141,7 @@ class SpotifyDataSet:
         """
         # self.all_tracks_df: pd.DataFrame
         self.data_dir = data_dir
+        self.all_tracks_df: pd.DataFrame = None
 
         if aggr_level == SpotifyDataSet.AGG_LEVEL_TRACK:
             self.all_tracks_df = self.get_tracks_listen_data()
@@ -158,35 +159,24 @@ class SpotifyDataSet:
 
         return self.all_tracks_df
 
-    def get_distinct_tracks(self) -> pd.Dataframe:
+    def get_distinct_tracks(self) -> pd.DataFrame:
         """
         Return distinct tracks, based on the KnownTrackID column (must make sure beforehand that it exists!).
-        :return: Dataframe, containing the unique instance of each track.
+        :return: DataFrame, containing the unique instance of each track.
         """
-        col_combo = [ColNames.ALBUM_ARTIST_NAME, ColNames.ALBUM_NAME, ColNames.TRACK_NAME, ColNames.TRACK_ID]
-        unique_tracks = self.all_tracks_df.sort_values(by = col_combo,
-                                                       ascending = True,
-                                                       inplace = False)
 
-        unique_tracks_ids = unique_tracks.drop_duplicates(subset = col_combo,
-                                      keep = 'first',
-                                      inplace = True)[ColNames.TRACK_ID]
+        unique_tracks = self.all_tracks_df.drop_duplicates(
+            subset = ColNames.TRACK_KNOWN_ID,
+            keep = 'first')
 
         unique_tracks.sort_values(by = ColNames.TIMESTAMP,
                                   ascending = True,
                                   inplace = True)
 
-        # todo fix
-        all_unique_tracks = pd.DataFrame()
-
-        return all_unique_tracks
+        return unique_tracks
 
     def add_known_track_id(self, known_tracks_ids_map: dict) -> None:
         col_idx_to_insert = self.all_tracks_df.columns.get_loc(ColNames.TRACK_ID) + 1
-
-        # self.all_tracks_df[ColNames.KNOWN_TRACK_ID]
-        # self.all_tracks_df =
-        # self.all_tracks_df.assign(known_tracks_ids_map.get(self.all_tracks_df[ColNames.TRACK_ID]))
 
         # Making sure that any track_id values that are missing in the mapping get mapped to themselves:
         unique_track_ids = self.all_tracks_df[ColNames.TRACK_ID].unique()

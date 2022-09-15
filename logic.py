@@ -141,22 +141,24 @@ class Logic:
 
         Logic.write_df_to_file(track_data, track_file_name)
 
-    def collect_unique_tracks_triplets_to_file(self):
+    def collect_known_tracks_to_file(self):
         self.my_spdt = spdt.SpotifyDataSet(aggr_level = spdt.SpotifyDataSet.AGG_LEVEL_TRACK)
 
-        known_tracks = self.my_spapi.determine_known_track_id(tracks = self.my_spdt.get_tracks_listen_data()[spdt.ColNames.TRACK_ID])
+        known_tracks_map = self.my_spapi.get_known_track_id_map(
+            self.my_spdt.get_tracks_listen_data()[spdt.ColNames.TRACK_ID])
 
+        self.my_spdt.add_known_track_id(known_tracks_map)
 
         # Writing to CSV file:
-        track_file_name = 'unique_tracks_triplets_{0}.csv'
+        track_file_name = 'known_tracks_{0}.csv'
 
-        Logic.write_df_to_file(known_tracks, track_file_name)
+        Logic.write_df_to_file(self.my_spdt.get_tracks_listen_data(), track_file_name)
 
-    def count_unique_tracks(tracks_df: pd.DataFrame) -> pd.DataFrame:
-        tracks_count = tracks_df.groupby(spdt.SpotifyDataSet.TRACK_ID_COMBO_COL).size().reset_index(
+    def count_unique_tracks(self) -> pd.DataFrame:
+        tracks_count = self.my_spdt.get_tracks_listen_data().groupby(spdt.ColNames.TRACK_KNOWN_ID).size().reset_index(
             name = spdt.ColNames.TIMES_LISTENED)
+        distinct_df = self.my_spdt.get_distinct_tracks()
 
-        # another way, returning Series
-        # tracks_count = tracks_df.value_counts(subset = spdt.SpotifyDataSet.TRACK_ID_COMBO_COL)
+        tracks_count = distinct_df.assign(times_listened = distinct_df[spdt.ColNames.TRACK_KNOWN_ID].map(tracks_count))
 
         return tracks_count

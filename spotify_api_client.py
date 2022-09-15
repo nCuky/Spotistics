@@ -2,6 +2,11 @@ import pandas as pd
 import tekore as tk
 from dataclasses import dataclass
 
+from datetime import datetime as dt
+import os.path
+
+import log
+
 
 @dataclass(frozen = True)
 class AttrNames:
@@ -24,9 +29,12 @@ class SpotifyAPIClient:
     def __init__(self,
                  token):
         self.app_token: tk.RefreshingToken() = None
+        self.user_token: tk.RefreshingToken() = None
         self.client = tk.Spotify(token = self.get_app_token(token),
                                  max_limits_on = True,
                                  chunked_on = True)
+
+        self.input_user_token(token)
 
     # region Connection logic
 
@@ -39,6 +47,18 @@ class SpotifyAPIClient:
                                                      cl_secret)
 
         return self.app_token
+
+    def input_user_token(self, token):
+        if token is not None:
+            cl_id = token[0].strip()
+            cl_secret = token[1].strip()
+
+            redirect_uri = 'http://localhost:8888/spotify/callback'
+
+            self.user_token = tk.prompt_for_user_token(client_id = cl_id,
+                                                       client_secret = cl_secret,
+                                                       redirect_uri = redirect_uri,
+                                                       scope = tk.scope.user_read_private)
 
     def connect(self) -> None:
         self.client = tk.Spotify(token = self.get_app_token(),
@@ -293,30 +313,47 @@ class SpotifyAPIClient:
 
         # todo Add 'Linked From' column to the tracks dataframe
 
-    def determine_known_track_id(self, tracks: pd.Series) -> pd.DataFrame:
+    def get_known_track_id_map(self, tracks: pd.Series) -> dict:
         """
-        For each track in the given dataframe, determine the single TrackID that is known to be valid and available,
-        and add a new column with the determined values.
-        A TrackID is considered as "known" in those cases:
-         * its 'available_markets' property contains the user's country;
-         * it is available as a Relinked Track for the original TrackID.
-        If it is not available anywhere, a NaN is put as an indication for that.
-        :param tracks: Series of all the required tracks
-        :return: Copy of the given dataframe, with an additional column for KnownTrackID.
+        For each track in the given dataframe, determine the single TrackID that is known to be valid and available.
+        There are two possible cases:
+        * if the track has a 'linked_from' object, the LinkedFrom ID is mapped to the given ID.
+        * if the track has no 'linked_from' object, the given id is mapped to itself.
+        :param tracks: Series of all the required tracks' ID's.
+        :return: Dictionary mapping each given ID to its 'known' ID (can be the same ID or different).
         """
-        unique_tracks = tracks.unique()
+        unique_tracks = tracks.dropna().unique()
+        unique_tracks_list = unique_tracks.tolist()
+        known_tracks_ids_map = {}
 
-        independent_tracks = self.client.tracks(track_ids = unique_tracks.tolist(),
-                                                # market = self.client.current_user().country
-                                                )
+        file_name = "full_tracks_to_determine.json"
+        file_path = 'data/personal_data/prepared/' + file_name
 
-        dead_tracks = pd.Series()
-        available_tracks = pd.Series()
+        # if os.path.isfile(file_path):
+        #     # Reading previously-created FullTracks JSON file:
+        #     log.write(log.READING_FILE.format(file_path))
+        #
+        #     full_tracks = pd.read_json(file_path, encoding = 'utf-8')
+        #
+        # else:
+        # Calling the API to get FullTracks for the given tracks' ID's:
+        with self.client.token_as(self.user_token):
+            log.write(message = log.FETCHING_TRACKS_ATTRS.format(unique_tracks.size))
+            full_tracks = self.client.tracks(track_ids = unique_tracks_list,
+                                             market = self.client.current_user().country)
 
-        for track in independent_tracks:
-            if tracks.items['available_markets'] is not None \
-                    and self.client.current_user().country in tracks.items['available_markets']:
-                available_tracks.append(track.items['id'])
+        log.write(message = log.WRITING_FILE.format(file_path))
+
+        with open(file_path, "w") as output_file:
+            output_file.write(full_tracks.json())
+
+        log.write(message = log.FILE_WRITTEN.format(file_path))
+
+        for track in full_tracks:
+            if track.linked_from is not None:
+                known_tracks_ids_map[track.linked_from.id] = track.id
 
             else:
-                dead_tracks.append(track.items['id'])
+                known_tracks_ids_map[track.id] = track.id
+
+        return known_tracks_ids_map

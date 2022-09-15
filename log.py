@@ -5,6 +5,7 @@ READING_FILE = "Now reading file: {0}"
 NONEXISTENT_FILE = "File doesn't exist: {0}"
 WRITING_FILE = "Now writing file: {0}"
 FILE_WRITTEN = "File written successfully: {0}"
+FETCHING_TRACKS_ATTRS = "Fetching FullTrack attributes for {0} tracks"
 
 
 def write(message: str) -> None:
