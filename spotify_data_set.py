@@ -52,6 +52,10 @@ class SpotifyDataSet:
         track_file_idx = 0
         all_tracks_json_df: pd.DataFrame = None
 
+        # # Trying to read a pre-combiled JSON file:
+        # track_file_name = "endsong_{0}.json".format(track_file_idx)
+        # file_path = data_dir + '/' + track_file_name
+
         # Trying to read all 'Track Listen History' files that are available in the given folder:
         while track_file_idx >= 0:
             curr_tracks_json_df = None
