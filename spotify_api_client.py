@@ -256,62 +256,6 @@ class SpotifyAPIClient:
         #
         # return pd.DataFrame(data = tracks_with_features)
 
-    def get_relinked_tracks_ids(self, original_tracks: pd.DataFrame) -> tk.model.ModelList:
-        """
-        Returns a Series of all Relinked Tracks' IDs (as in, the parent of a given 'LinkedFrom' track),
-        for the given Tracks' IDs.
-        :param original_tracks: DataFrame containing the original Tracks' IDs and their corresponding market.
-        :return: Series with RelinkedTrackID for each given TrackID.
-        """
-        tracks_for_markets_grp = original_tracks.groupby(by = AttrNames.CONN_COUNTRY, sort = False)
-
-        unique_tracks_for_markets = tracks_for_markets_grp[AttrNames.TRACK_ID].unique()
-
-        # Collecting API properties for all the required tracks in all required markets:
-        for conn_country_tracks in unique_tracks_for_markets.items():
-            country_full_tracks = self.client.tracks(track_ids = conn_country_tracks[1],
-                                                     market = conn_country_tracks[0])
-
-            # curr_full_tracks = curr_full_tracks_paging
-            #
-            # while curr_full_tracks_paging.next is not None:
-            #     curr_full_tracks_paging = self.client.next(curr_full_tracks_paging)
-            #     curr_full_tracks.extend(curr_full_tracks_paging.items)
-
-            # track_gen = (track for track in country_full_tracks)
-            # track_nexter = next(track_gen)
-            # filter = (
-            #     track_nexter['id']
-            #     if track_nexter['linked_from'] is not None
-            #     else track_nexter['linked_from']['id']
-            # )
-
-            all_relinked_tracks = list(filter)
-
-            for curr_full_track in country_full_tracks:
-                if curr_full_track.linked_from is not None:
-                    # In this case, the 'ID' field means 'Relinked ID'. I need to keep it:
-                    curr_full_track.id
-
-            # region temporary test
-
-            def temp_test():
-                file_name = "techcrunch.csv"
-                lines = (line for line in open(file_name))
-                list_line = (s.rstrip().split(",") for s in lines)
-                cols = next(list_line)
-                company_dicts = (dict(zip(cols, data)) for data in list_line)
-                funding = (
-                    int(company_dict["raisedAmt"])
-                    for company_dict in company_dicts
-                    if company_dict["round"] == "a"
-                )
-                total_series_a = sum(funding)
-                print(f"Total series A fundraising: ${total_series_a}")
-
-            # endregion
-
-        # todo Add 'Linked From' column to the tracks dataframe
 
     def get_known_track_id_map(self, tracks: pd.Series) -> dict:
         """

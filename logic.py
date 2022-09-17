@@ -3,10 +3,8 @@ import spotify_data_set as spdt
 from datetime import datetime as dt
 import pandas as pd
 import log
-
-
 # import pyspark as sk
-# import seaborn as sns  # Plotting
+
 
 class Logic:
 
@@ -155,10 +153,16 @@ class Logic:
         Logic.write_df_to_file(self.my_spdt.get_tracks_listen_data(), track_file_name)
 
     def count_unique_tracks(self) -> pd.DataFrame:
-        tracks_count = self.my_spdt.get_tracks_listen_data().groupby(spdt.ColNames.TRACK_KNOWN_ID).size().reset_index(
-            name = spdt.ColNames.TIMES_LISTENED)
-        distinct_df = self.my_spdt.get_distinct_tracks()
+        tracks_df = self.my_spdt.get_tracks_listen_data()
 
-        tracks_count = distinct_df.assign(times_listened = distinct_df[spdt.ColNames.TRACK_KNOWN_ID].map(tracks_count))
+        # Removing all records of tracks that were played exactly 0 milliseconds:
+        # tracks_df = tracks_df.drop(index = tracks_df.index[tracks_df[spdt.ColNames.MS_PLAYED].eq(0)], inplace = False)
+
+        tracks_count = tracks_df.groupby(spdt.ColNames.TRACK_KNOWN_ID,
+                                         as_index = False).agg(
+            times_listened = (spdt.ColNames.TRACK_KNOWN_ID, 'count'),
+            album_artist_name = (spdt.ColNames.ALBUM_ARTIST_NAME, 'first'),
+            album_name = (spdt.ColNames.ALBUM_NAME, 'first'),
+            track_name = (spdt.ColNames.TRACK_NAME, 'first'))
 
         return tracks_count

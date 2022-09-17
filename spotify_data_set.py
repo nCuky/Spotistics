@@ -76,9 +76,14 @@ class SpotifyDataSet:
                 track_file_idx += 1
 
         if all_tracks_json_df is not None:
+            # Sorting the DataFrame by timestamp of listening.
+            # Because there are multiple source JSON files, each one of them has its own index starting from 0,
+            # which causes duplicate index values in the final DataFrame.
+            # This is why ignore_index = True is needed here:
             all_tracks_json_df.sort_values(by = ColNames.TIMESTAMP,  # 'ts'
                                            inplace = True,
-                                           ascending = True)
+                                           ascending = True,
+                                           ignore_index = True)
 
         return all_tracks_json_df
 
@@ -156,6 +161,13 @@ class SpotifyDataSet:
             SpotifyDataSet.add_track_id_column(self.all_tracks_df)
             SpotifyDataSet.rename_master_metadata_columns(self.all_tracks_df)
             self.all_tracks_df.drop(columns = [ColNames.USERNAME, ColNames.IP_ADDRESS, ColNames.USER_AGENT])
+
+            # Edge-case: Artist "Joey Bada$$" causes errors, because matplotlib interprets '$$' as math text.
+            # Replacing all "$$" with "\$\$":
+            self.all_tracks_df[ColNames.ALBUM_ARTIST_NAME].replace('\$\$', '\\$\\$', inplace = True)
+
+            # self.all_tracks_df.drop(self.all_tracks_df.index[self.all_tracks_df[ColNames.MS_PLAYED].eq(0)],
+            # inplace = True)
 
         return self.all_tracks_df
 
