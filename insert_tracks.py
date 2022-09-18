@@ -3,13 +3,14 @@ import sqlite3
 import sys
 import pandas as pd
 from dataclasses import dataclass
-import spotify_data_set as spdt
+from spotify_data_set import ColNames as spdcol
 
 
 class DB:
     """
     Manages the local DB for saving Spotify data for further calculations.
     """
+
     @dataclass(frozen = True)
     class TABLES:
         TRACKS = 'tracks'
@@ -230,19 +231,19 @@ class DB:
         Removes duplicate rows before inserting.
         :param df: DataFrame with Listen History records for inserting.
         """
-        df_to_insert = df[['ts', 'username', 'track_id', 'platform',
-                           'ms_played', 'conn_country', 'spotify_track_uri',
-                           'reason_start', 'reason_end', 'shuffle', 'offline',
-                           'incognito_mode', 'skipped']]
+        df_to_insert = df[[spdcol.TIMESTAMP, spdcol.USERNAME, spdcol.TRACK_ID, spdcol.PLATFORM,
+                           spdcol.MS_PLAYED, spdcol.CONN_COUNTRY, spdcol.TRACK_URI,
+                           spdcol.REASON_START, spdcol.REASON_END, spdcol.SHUFFLE, spdcol.OFFLINE,
+                           spdcol.INCOGNITO, spdcol.SKIPPED]]
 
-        df_to_insert = df_to_insert.rename(columns = {'ts'               : 'pk_timestamp',
-                                                      'username'         : 'pk_username',
-                                                      'track_id'         : 'pk_track_id',
-                                                      'spotify_track_uri': 'uri'})
+        df_to_insert = df_to_insert.rename(columns = {spdcol.TIMESTAMP: 'pk_timestamp',
+                                                      spdcol.USERNAME : 'pk_username',
+                                                      spdcol.TRACK_ID : 'pk_track_id',
+                                                      spdcol.TRACK_URI: 'uri'})
 
         df_to_insert = df_to_insert.drop_duplicates(subset = ['pk_timestamp', 'pk_username', 'pk_track_id'])
 
-        df_to_insert.to_sql("tracks_listen_history", self.connection, if_exists = "append", index = False)
+        df_to_insert.to_sql(DB.TABLES.TRACKS_LISTEN_HISTORY, self.connection, if_exists = "append", index = False)
 
 
 # Old logic before refactoring into a DB class:

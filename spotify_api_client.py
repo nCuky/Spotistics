@@ -268,14 +268,16 @@ class SpotifyAPIClient:
 
         return full_tracks
 
-    def get_known_track_id_map(self, tracks: pd.Series, full_tracks: tk.model.ModelList[tk.model.FullTrack]) -> dict:
+    def get_known_track_id_map(self, full_tracks: tk.model.ModelList[tk.model.FullTrack], tracks: pd.Series) -> dict:
         """
-        For each track in the given dataframe, determine the single TrackID that is known to be valid and available.
+        For each given track, determine the single TrackID that is known to be valid and available.
         There are two possible cases:
         * if the track has a 'linked_from' object, the LinkedFrom ID is mapped to the given ID.
         * if the track has no 'linked_from' object, the given id is mapped to itself.
-        :param tracks: Series of all the required tracks' ID's.
-        :param full_tracks: Tekore ModelList of FullTracks, from which to take the TrackKnownID.
+        If a 'full_tracks' ModelList object is given, the method uses it without calling the API.
+        Otherwise, the method calls the API with the given 'tracks' Series object.
+        :param full_tracks: Tekore ModelList of FullTracks, from which to take the TrackKnownID values.
+        :param tracks: Series of TracksID values, to call the API with.
         :return: Dictionary mapping each given ID to its 'known' ID (can be the same ID or different).
         """
         full_tracks = self.get_full_tracks(tracks) if full_tracks is None else full_tracks
