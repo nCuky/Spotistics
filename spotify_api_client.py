@@ -270,28 +270,11 @@ class SpotifyAPIClient:
         unique_tracks_list = unique_tracks.tolist()
         known_tracks_ids_map = {}
 
-        file_name = "full_tracks_to_determine.json"
-        file_path = 'data/personal_data/prepared/' + file_name
-
-        # if os.path.isfile(file_path):
-        #     # Reading previously-created FullTracks JSON file:
-        #     log.write(log.READING_FILE.format(file_path))
-        #
-        #     full_tracks = pd.read_json(file_path, encoding = 'utf-8')
-        #
-        # else:
         # Calling the API to get FullTracks for the given tracks' ID's:
         with self.client.token_as(self.user_token):
             log.write(message = log.FETCHING_TRACKS_ATTRS.format(unique_tracks.size))
             full_tracks = self.client.tracks(track_ids = unique_tracks_list,
                                              market = self.client.current_user().country)
-
-        log.write(message = log.WRITING_FILE.format(file_path))
-
-        with open(file_path, "w") as output_file:
-            output_file.write(full_tracks.json())
-
-        log.write(message = log.FILE_WRITTEN.format(file_path))
 
         for track in full_tracks:
             if track.linked_from is not None:

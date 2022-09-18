@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import re
 import os.path
 import log
 from dataclasses import dataclass
@@ -43,53 +44,91 @@ class SpotifyDataSet:
     # region Utility Methods
 
     @staticmethod
-    def collect_all_tracks_listen_history(data_dir: str) -> pd.DataFrame:
+    def collect_all_listen_history(folder_path: str, filename_prefix: str = 'endsong') -> pd.DataFrame:
         """
-        Reads Tracks Listen History from JSON files contained in the given folder, and collects
-        them into a single DataFrame, sorted by timestamp of listen (ascending).
-        :return: DataFrame of all Tracks Listen history, sorted by ascending timestamp.
+        Reads all Listen History (tracks and episodes) from JSON files received from Spotify and contained in the given
+        folder, and collects them into a single DataFrame.
+        :param folder_path: Path to a folder containing at least one Spotify Listen History JSON file.
+        Filenames should already start with the given filename_prefix (e.g. 'endsong.json' or 'endsong_3.json').
+        :param filename_prefix: Filename Prefix for the desired files to read.
+        :return: DataFrame of all Listen history, sorted by timestamp of listening (ascending) and Milliseconds played
+        (ascending).
         """
-        track_file_idx = 0
-        all_tracks_json_df: pd.DataFrame = None
+        all_listens_df: pd.DataFrame = None
+        files_list = [filename for filename in os.listdir(folder_path) if
+                      re.match(string = filename, pattern = f'{filename_prefix}.*.json')]
 
-        # # Trying to read a pre-combiled JSON file:
-        # track_file_name = "endsong_{0}.json".format(track_file_idx)
-        # file_path = data_dir + '/' + track_file_name
-
-        # Trying to read all 'Track Listen History' files that are available in the given folder:
-        while track_file_idx >= 0:
-            curr_tracks_json_df = None
-
-            track_file_name = "endsong_{0}.json".format(track_file_idx)
-            file_path = data_dir + '/' + track_file_name
+        # Trying to read all 'Listen History' files that are available in the given folder:
+        for filename in files_list:
+            curr_listen_json_df = None
+            file_path = folder_path + '/' + filename
 
             if os.path.isfile(file_path):
-                log.write(log.READING_FILE.format(track_file_name))
+                log.write(log.READING_FILE.format(filename))
 
-                curr_tracks_json_df = pd.read_json(file_path, encoding = 'utf-8')
+                curr_listen_json_df = pd.read_json(file_path, encoding = 'utf-8')
 
-            if curr_tracks_json_df is None:
-                track_file_idx = -1
-
-                log.write(log.NONEXISTENT_FILE.format(track_file_name))
+            if curr_listen_json_df is None:
+                log.write(log.NONEXISTENT_FILE.format(filename))
 
             else:
-                all_tracks_json_df = curr_tracks_json_df.copy() if all_tracks_json_df is None \
-                    else pd.concat([all_tracks_json_df, curr_tracks_json_df])
+                all_listens_df = curr_listen_json_df.copy() if all_listens_df is None \
+                    else pd.concat([all_listens_df, curr_listen_json_df])
 
-                track_file_idx += 1
+        return all_listens_df
 
-        if all_tracks_json_df is not None:
-            # Sorting the DataFrame by timestamp of listening.
-            # Because there are multiple source JSON files, each one of them has its own index starting from 0,
-            # which causes duplicate index values in the final DataFrame.
-            # This is why ignore_index = True is needed here:
-            all_tracks_json_df.sort_values(by = ColNames.TIMESTAMP,  # 'ts'
-                                           inplace = True,
-                                           ascending = True,
-                                           ignore_index = True)
+    @staticmethod
+    def prepare_track_listen_history(listen_history_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Cleans up, sorts and prepares a Tracks-only Listen History DataFrame for working upon.
+        Sorts the records by timestamp and ms_played (both ascending);
+        Adds a TrackID column (extracted from the SpotifyTrackURI), renames some columns to friendlier names,
+        and removes other unwanted columns;
+        Removes podcast-episodes listens, listens without any TrackID, and duplicated listens of the same track in
+        the same timestamp;
+        Takes care of other edge-cases.
+        :param listen_history_df: Source DataFrame with the Listen History.
+        :return: DataFrame with the prepared Tracks Listen History.
+        """
+        prepped_df = listen_history_df.copy()
 
-        return all_tracks_json_df
+        # Sorting the DataFrame by timestamp of listening, then by Milliseconds Played.
+        # 1. Timestamp of listening is NOT unique. Sometimes, in a certain timestamp, multiple tracks were played,
+        # or the same track multiple times. Usually, most of these instances would have ms_played = 0.
+        # 2. Because there are multiple source JSON files, each one of them has its own index starting from 0,
+        # which causes duplicate index values in the final DataFrame.
+        # This is why ignore_index = True is needed here:
+        prepped_df = prepped_df.sort_values(by = [ColNames.TIMESTAMP, ColNames.MS_PLAYED],
+                                            ascending = True,
+                                            ignore_index = True,
+                                            inplace = False,)
+
+        # Removing irrelevant columns:
+        prepped_df = prepped_df.drop(columns = [ColNames.IP_ADDRESS, ColNames.USER_AGENT],
+                                     inplace = False)
+
+        # Removing listen-records with no SpotifyURI (i.e. podcasts episodes, and errors in the data)
+        prepped_df = prepped_df.drop(
+            prepped_df.index[prepped_df[ColNames.TRACK_URI].isnull()], inplace = False)
+
+        SpotifyDataSet.add_track_id_column(prepped_df)
+
+        # Errors in the source data can cause multiple tracks (the same one or different ones) to be listed in the
+        # exact same timestamp. In a certain timestamp, I want to keep different listened tracks, but remove
+        # the same track if played multiple times.
+        # Here, I'm keeping only the last ms_played value (should be maximal) of each duplicate-tracks-cluster:
+        prepped_df = prepped_df.drop_duplicates(subset = [ColNames.TIMESTAMP, ColNames.USERNAME, ColNames.TRACK_ID],
+                                                keep = 'last', inplace = False)
+
+        prepped_df = prepped_df.rename(columns = SpotifyDataSet.COLUMNS_TO_RENAME,
+                                       inplace = False)
+
+        # Edge-case: Artist "Joey Bada$$" causes errors, because matplotlib interprets '$$' as math text.
+        # Replacing all "$$" with "\$\$":
+        prepped_df[ColNames.ALBUM_ARTIST_NAME] = prepped_df[ColNames.ALBUM_ARTIST_NAME].replace('\$\$', '\\$\\$',
+                                                                                                inplace = False)
+
+        return prepped_df
 
     @staticmethod
     def add_track_id_column(updated_df: pd.DataFrame) -> None:
@@ -107,11 +146,6 @@ class SpotifyDataSet:
         updated_df.insert(loc = col_idx_to_insert,
                           column = ColNames.TRACK_ID,  # 'track_id'
                           value = track_ids)
-
-    @staticmethod
-    def rename_master_metadata_columns(updated_df: pd.DataFrame) -> None:
-        updated_df.rename(columns = SpotifyDataSet.COLUMNS_TO_RENAME,
-                          inplace = True)
 
     @staticmethod
     def prepare_audio_analysis_data(updated_df: pd.DataFrame) -> None:
@@ -159,19 +193,8 @@ class SpotifyDataSet:
 
     def get_tracks_listen_data(self) -> pd.DataFrame:
         if self.all_tracks_df is None:
-            self.all_tracks_df = SpotifyDataSet.collect_all_tracks_listen_history(self.data_dir)
-
-            # Cleaning and preparing the data:
-            SpotifyDataSet.add_track_id_column(self.all_tracks_df)
-            SpotifyDataSet.rename_master_metadata_columns(self.all_tracks_df)
-            self.all_tracks_df.drop(columns = [ColNames.USERNAME, ColNames.IP_ADDRESS, ColNames.USER_AGENT])
-
-            # Edge-case: Artist "Joey Bada$$" causes errors, because matplotlib interprets '$$' as math text.
-            # Replacing all "$$" with "\$\$":
-            self.all_tracks_df[ColNames.ALBUM_ARTIST_NAME].replace('\$\$', '\\$\\$', inplace = True)
-
-            # self.all_tracks_df.drop(self.all_tracks_df.index[self.all_tracks_df[ColNames.MS_PLAYED].eq(0)],
-            # inplace = True)
+            self.all_tracks_df = SpotifyDataSet.collect_all_listen_history(folder_path = self.data_dir)
+            self.all_tracks_df = SpotifyDataSet.prepare_track_listen_history(listen_history_df = self.all_tracks_df)
 
         return self.all_tracks_df
 

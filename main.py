@@ -13,7 +13,7 @@ my_lg = lg()
 # features_data = my_lg.get_artist_audio_features_data(name = "Frank Zappa")
 # my_lg.collect_all_tracks_to_file()
 
-my_lg.collect_known_tracks_to_file()
+my_lg.collect_known_tracks_and_save()
 tracks_count = my_lg.count_unique_tracks()
 tracks_count.sort_values(by = spdt.ColNames.TIMES_LISTENED, ascending = False, inplace = True)
 
