@@ -1,10 +1,6 @@
 import pandas as pd
 import tekore as tk
 from dataclasses import dataclass
-
-from datetime import datetime as dt
-import os.path
-
 import log
 
 
@@ -26,9 +22,8 @@ class SpotifyAPIClient:
     AUTH_SCOPE = "user-library-read playlist-read-collaborative playlist-read-private user-read-recently-played"
     REDIRECT_URI = "http://localhost:8888/spotify/callback"
 
-    def __init__(self,
-                 token):
-        self.app_token: tk.RefreshingToken() = None
+    def __init__(self, token):
+        self.app_token: tk.RefreshingToken(token = None, credentials = None) = None
         self.user_token: tk.RefreshingToken() = None
         self.client = tk.Spotify(token = self.get_app_token(token),
                                  max_limits_on = True,
@@ -237,44 +232,54 @@ class SpotifyAPIClient:
 
         return analyses
 
-    def create_df_full_tracks(self, tracks_items: list,
-                              audio_features_names: list,
-                              limit = MAX_TRACKS_FOR_FEATURES) -> pd.DataFrame:
-        self.validate_connection()
-
-        # tracks_with_features = {'track_name': get_tracks_names(tracks_items)}
-        #
-        # test_artists_list = get_tracks_artists(tracks_items)
-        #
-        # tracks_with_features['artist'] =
-        #
-        # for feat_name in audio_features_names:
-        #     # Inserting a new column, titled feat_name, containing a list of all the audio features for all the tracks:
-        #     tracks_with_features[feat_name] = self.get_specific_audio_feature(tracks_items,
-        #                                                                       audio_feature = feat_name,
-        #                                                                       limit = limit)
-        #
+    # def create_df_full_tracks(self, tracks_items: list,
+    #                           audio_features_names: list,
+    #                           limit = MAX_TRACKS_FOR_FEATURES) -> pd.DataFrame:
+    #     self.validate_connection()
+    #
+    #     # tracks_with_features = {'track_name': get_tracks_names(tracks_items)}
+    #     #
+    #     # test_artists_list = get_tracks_artists(tracks_items)
+    #     #
+    #     # tracks_with_features['artist'] =
+    #     #
+    #     # for feat_name in audio_features_names:
+    #     #     # Inserting a new column, titled feat_name, containing a list of all the audio features for all the tracks:
+    #     #     tracks_with_features[feat_name] = self.get_specific_audio_feature(tracks_items,
+    #     #                                                                       audio_feature = feat_name,
+    #     #                                                                       limit = limit)
+    #     #
         # return pd.DataFrame(data = tracks_with_features)
 
-
-    def get_known_track_id_map(self, tracks: pd.Series) -> dict:
+    def get_full_tracks(self, tracks: pd.Series) -> tk.model.ModelList[tk.model.FullTrack]:
         """
-        For each track in the given dataframe, determine the single TrackID that is known to be valid and available.
-        There are two possible cases:
-        * if the track has a 'linked_from' object, the LinkedFrom ID is mapped to the given ID.
-        * if the track has no 'linked_from' object, the given id is mapped to itself.
+        For each track in the given dataframe, fetches its FullTrack object from the API.
         :param tracks: Series of all the required tracks' ID's.
-        :return: Dictionary mapping each given ID to its 'known' ID (can be the same ID or different).
+        :return: Tekore ModelList of FullTracks, for the given tracks series.
         """
         unique_tracks = tracks.dropna().unique()
         unique_tracks_list = unique_tracks.tolist()
-        known_tracks_ids_map = {}
 
         # Calling the API to get FullTracks for the given tracks' ID's:
         with self.client.token_as(self.user_token):
             log.write(message = log.FETCHING_TRACKS_ATTRS.format(unique_tracks.size))
             full_tracks = self.client.tracks(track_ids = unique_tracks_list,
                                              market = self.client.current_user().country)
+
+        return full_tracks
+
+    def get_known_track_id_map(self, tracks: pd.Series, full_tracks: tk.model.ModelList[tk.model.FullTrack]) -> dict:
+        """
+        For each track in the given dataframe, determine the single TrackID that is known to be valid and available.
+        There are two possible cases:
+        * if the track has a 'linked_from' object, the LinkedFrom ID is mapped to the given ID.
+        * if the track has no 'linked_from' object, the given id is mapped to itself.
+        :param tracks: Series of all the required tracks' ID's.
+        :param full_tracks: Tekore ModelList of FullTracks, from which to take the TrackKnownID.
+        :return: Dictionary mapping each given ID to its 'known' ID (can be the same ID or different).
+        """
+        full_tracks = self.get_full_tracks(tracks) if full_tracks is None else full_tracks
+        known_tracks_ids_map = {}
 
         for track in full_tracks:
             if track.linked_from is not None:

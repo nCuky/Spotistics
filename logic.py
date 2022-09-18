@@ -4,10 +4,10 @@ from datetime import datetime as dt
 import pandas as pd
 import log
 # import pyspark as sk
+import insert_tracks as db
 
 
 class Logic:
-
     # region Utility Methods
 
     @staticmethod
@@ -94,6 +94,7 @@ class Logic:
     def __init__(self):
         self.my_spapi = spapi(token = Logic.get_token())
         self.my_spdt: spdt.SpotifyDataSet = None
+        self.my_db = db.DB()
 
     def get_artist_audio_features_data(self, name: str):
         artist_id = self.my_spapi.find_artist(name).id
@@ -148,7 +149,9 @@ class Logic:
         self.my_spdt.add_known_track_id(known_tracks_map)
 
         # Saving to DB:
+        self.my_db.insert_listen_history(self.my_spdt.get_tracks_listen_data())
 
+        self.my_db.commit()
 
         # Writing to CSV file:
         track_file_name = 'known_tracks_{0}.csv'

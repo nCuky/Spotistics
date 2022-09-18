@@ -12,3 +12,5 @@ __pycache__/
 /test_df.csv
 /results/calced/
 /data/personal_data/prepared/
+/data/personal_data/raw_json/
+/data/dl_sample_data/

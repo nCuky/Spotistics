@@ -22,6 +22,9 @@ class ColNames:
     IP_ADDRESS = 'ip_addr_decrypted'
     USER_AGENT = 'user_agent_decrypted'
     INCOGNITO = 'incognito_mode'
+    EPISODE_NAME = 'episode_name'
+    EPISODE_SHOW_NAME = 'episode_show_name'
+    EPISODE_URI = 'spotify_episode_uri'
     SONG_MODE = 'mode'
     SONG_KEY = 'key'
     SONG_FULL_KEY = 'full_key'
@@ -92,6 +95,12 @@ class SpotifyDataSet:
         """
         prepped_df = listen_history_df.copy()
 
+        # Removing irrelevant columns:
+        prepped_df = prepped_df.drop(
+            columns = [ColNames.IP_ADDRESS, ColNames.USER_AGENT,
+                       ColNames.EPISODE_NAME, ColNames.EPISODE_SHOW_NAME, ColNames.EPISODE_URI],
+            inplace = False)
+
         # Sorting the DataFrame by timestamp of listening, then by Milliseconds Played.
         # 1. Timestamp of listening is NOT unique. Sometimes, in a certain timestamp, multiple tracks were played,
         # or the same track multiple times. Usually, most of these instances would have ms_played = 0.
@@ -101,11 +110,7 @@ class SpotifyDataSet:
         prepped_df = prepped_df.sort_values(by = [ColNames.TIMESTAMP, ColNames.MS_PLAYED],
                                             ascending = True,
                                             ignore_index = True,
-                                            inplace = False,)
-
-        # Removing irrelevant columns:
-        prepped_df = prepped_df.drop(columns = [ColNames.IP_ADDRESS, ColNames.USER_AGENT],
-                                     inplace = False)
+                                            inplace = False, )
 
         # Removing listen-records with no SpotifyURI (i.e. podcasts episodes, and errors in the data)
         prepped_df = prepped_df.drop(
