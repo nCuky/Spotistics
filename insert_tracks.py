@@ -247,7 +247,7 @@ class DB:
 
 
 # Old logic before refactoring into a DB class:
-if 0 is 1:
+if 0 == 1:
     # Load json data
     with open("full_tracks.json", "r") as f:
         tracks = json.load(f)
