@@ -6,7 +6,9 @@ NONEXISTENT_FILE = "File doesn't exist: {0}"
 WRITING_FILE = "Now writing file: {0}..."
 FILE_WRITTEN = "File written successfully: {0}"
 FETCHING_TRACKS_ATTRS = "Fetching FullTrack attributes for {0} tracks (might take a while)..."
-
+TRACKS_ATTRS_FETCHED = "FullTrack attributes were successfully fetched for {0} tracks."
+API_SERVICE_UNAVAILABLE = 'Spotify API Service is unavailable. Original error: {0}'
+EMPTY_VALUES = 'No {0} values were given, so no DB-action was performed.'
 
 def write(message: str) -> None:
     trace = traceback.extract_stack()

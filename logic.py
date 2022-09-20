@@ -142,20 +142,21 @@ class Logic:
 
     def collect_known_tracks_and_save(self):
         self.my_spdt = spdt.SpotifyDataSet(aggr_level = spdt.SpotifyDataSet.AGG_LEVEL_TRACK)
-        full_tracks_mdlist = self.my_spapi.get_full_tracks(
-            self.my_spdt.get_tracks_listen_data()[spdt.ColNames.TRACK_ID])
+        full_tracks_mdlist = self.my_spapi.get_full_tracks(tracks = self.my_spdt.get_tracks_listen_data()[
+            spdt.ColNames.TRACK_ID])
 
-        known_tracks_map = self.my_spapi.get_known_track_id_map(full_tracks = full_tracks_mdlist)
-
-        self.my_spdt.add_known_track_id(known_tracks_map)
+        self.my_spdt.add_track_known_id(self.my_spapi.get_track_known_id_map(full_tracks = full_tracks_mdlist))
 
         # Saving to DB:
         for track in full_tracks_mdlist:
-            self.my_db.insert_track_full(dict(track))
+            self.my_db.insert_track_full(track)
 
         self.my_db.insert_listen_history(self.my_spdt.get_tracks_listen_data())
 
         self.my_db.commit()
+
+        self.my_db.close()
+
 
         # Writing to CSV file:
         track_file_name = 'known_tracks_{0}.csv'

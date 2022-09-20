@@ -228,7 +228,7 @@ class SpotifyDataSet:
 
         return unique_tracks
 
-    def add_known_track_id(self, known_tracks_ids_map: dict) -> None:
+    def add_track_known_id(self, known_tracks_ids_map: dict) -> None:
         col_idx_to_insert = self.all_tracks_df.columns.get_loc(ColNames.TRACK_ID) + 1
 
         # Making sure that any track_id values that are missing in the mapping get mapped to themselves:

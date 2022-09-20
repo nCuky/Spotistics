@@ -249,7 +249,7 @@ class SpotifyAPIClient:
     #     #                                                                       audio_feature = feat_name,
     #     #                                                                       limit = limit)
     #     #
-        # return pd.DataFrame(data = tracks_with_features)
+    # return pd.DataFrame(data = tracks_with_features)
 
     def get_full_tracks(self, tracks: pd.Series) -> tk.model.ModelList[tk.model.FullTrack]:
         """
@@ -263,12 +263,18 @@ class SpotifyAPIClient:
         # Calling the API to get FullTracks for the given tracks' ID's:
         with self.client.token_as(self.user_token):
             log.write(message = log.FETCHING_TRACKS_ATTRS.format(unique_tracks.size))
-            full_tracks = self.client.tracks(track_ids = unique_tracks_list,
-                                             market = self.client.current_user().country)
+            try:
+                full_tracks = self.client.tracks(track_ids = unique_tracks_list,
+                                                 market = self.client.current_user().country)
+                log.write(message = log.TRACKS_ATTRS_FETCHED.format(len(full_tracks)))
+
+            except tk.ServiceUnavailable as ex:
+                log.write(message = log.API_SERVICE_UNAVAILABLE.format(ex))
 
         return full_tracks
 
-    def get_known_track_id_map(self, full_tracks: tk.model.ModelList[tk.model.FullTrack], tracks: pd.Series) -> dict:
+    def get_track_known_id_map(self, full_tracks: tk.model.ModelList[tk.model.FullTrack],
+                               tracks: pd.Series = None) -> dict:
         """
         For each given track, determine the single TrackID that is known to be valid and available.
         There are two possible cases:
@@ -281,13 +287,13 @@ class SpotifyAPIClient:
         :return: Dictionary mapping each given ID to its 'known' ID (can be the same ID or different).
         """
         full_tracks = self.get_full_tracks(tracks) if full_tracks is None else full_tracks
-        known_tracks_ids_map = {}
+        tracks_known_ids_map = {}
 
         for track in full_tracks:
             if track.linked_from is not None:
-                known_tracks_ids_map[track.linked_from.id] = track.id
+                tracks_known_ids_map[track.linked_from.id] = track.id
 
             else:
-                known_tracks_ids_map[track.id] = track.id
+                tracks_known_ids_map[track.id] = track.id
 
-        return known_tracks_ids_map
+        return tracks_known_ids_map
