@@ -16,17 +16,20 @@ CREATE TABLE IF NOT EXISTS tracks (
 CREATE INDEX idx_tracks_name
 ON tracks (name);
 
+
 CREATE TABLE IF NOT EXISTS albums (
        pk_id text,
        href text,
        uri text,
        name text,
+       album_type text,
        total_tracks integer,
        release_date text,
        release_date_precision text,
-       fk_track_id text,
-       foreign key (fk_track_id) references tracks(pk_id),
-       primary key (pk_id, fk_track_id)
+--       fk_track_id text,
+--       foreign key (fk_track_id) references tracks(pk_id),
+       primary key (pk_id)
+--       , fk_track_id)
 );
 
 CREATE INDEX idx_albums_name
@@ -35,38 +38,78 @@ ON albums (name);
 CREATE INDEX idx_albums_release_date
 ON albums (release_date, release_date_precision);
 
-CREATE TABLE IF NOT EXISTS artists_album (
+
+CREATE TABLE IF NOT EXISTS artists (
+       pk_id text,
+       href text,
+       uri text,
+       name text,
+       total_followers integer,
+       popularity integer,
+       primary key (pk_id)
+);
+
+CREATE TABLE IF NOT EXISTS albums_of_artists (
+       pk_artist_id text,
+       pk_album_id text,
+       primary key (pk_artist_id, pk_album_id),
+       foreign key (pk_artist_id) references artists(pk_id),
+       foreign key (pk_album_id) references albums(pk_id)
+);
+
+CREATE TABLE IF NOT EXISTS tracks_of_albums (
+       pk_album_id text,
+       pk_track_id text,
+       primary key (pk_album_id, fk_track_id),
+       foreign key (pk_album_id) references albums(pk_id),
+       foreign key (fk_track_id) references tracks(pk_id)
+);
+
+CREATE TABLE IF NOT EXISTS genres (
+)      pk_id text
+       primary key (pk_id)
+
+CREATE TABLE IF NOT EXISTS genres_of_artists (
+       pk_artist_id text,
+       pk_genre_id text,
+       primary key (pk_artist_id, pk_genre_id),
+       foreign key (pk_artist_id) references artists(pk_id),
+       foreign key (pk_genre_id) references genres(pk_id)
+
+CREATE TABLE IF NOT EXISTS artists_albums (
        pk_id text,
        href text,
        uri text,
        name text,
        fk_album_id text,
        foreign key (fk_album_id) references albums(pk_id),
-       foreign key (pk_id) references artists_track(pk_id),
+       foreign key (pk_id) references artists_tracks(pk_id),
        primary key (pk_id, fk_album_id)
 );
 
-CREATE INDEX idx_artists_album_name
-ON artists_album (name);
+CREATE INDEX idx_artists_albums_name
+ON artists_albums (name);
 
-CREATE TABLE IF NOT EXISTS artists_track (
+
+CREATE TABLE IF NOT EXISTS artists_tracks (
        pk_id text,
        href text,
        uri text,
        name text,
        fk_track_id text,
        foreign key (fk_track_id) references tracks(pk_id),
-       foreign key (pk_id) references artists_album(pk_id),
+       foreign key (pk_id) references artists_albums(pk_id),
        primary key (pk_id, fk_track_id)
 );
 
-CREATE INDEX idx_artists_track_name
-ON artists_track (name);
+CREATE INDEX idx_artists_tracks_name
+ON artists_tracks (name);
+
 
 CREATE TABLE IF NOT EXISTS tracks_linked_from (
        pk_id text primary key,
-       href text,
-       uri text,
+--       href text,
+--       uri text,
        fk_track_id text,
        foreign key (fk_track_id) references tracks(pk_id)
 );

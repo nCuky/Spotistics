@@ -3,16 +3,32 @@
 
 * column function - from all listen data, for every combination of Artist+Track+Album, find how many instances exist.
 
----Audio Features---
-* All Zappa songs - columns graph by key
+--- DB and Logic fixes ---
+* New logic for creating listen history DataFrame from the DB instead of the files.
+* Change Artist-Tracks and Artist-Albums DB tables so that they contain only links by entities' ID, without redundancy.
+*
 
----Observed problems regarding data standardization:---
-* Track that was replace with its "Remastered" version is considered a new separate track than the original one,
+
+
+
+--- Ideas for Audio-Features-based graphs---
+* A given artist's tracks collected by track's Key and Mode
+* Top 50 artists by listening time (total time for each artist)
+* Artist specialist: total listen time to an artist, as percentage of the total time of their discography's tracks.
+* Forgotten tracks: listened tracks with the longest time gap between listens
+* Unpopular tracks: all listens to the least-popular tracks
+
+
+
+
+---Low priority issues regarding data standardization:---
+* Track that was replace with its "Remastered" version is considered a new and separate track than the original one,
  even though I want to count it as the same track. This was solved by getting the RelinkedTrackID for each track
- and determining the "Track Known ID" according to it.
-* Track that was a "Single" taken from another album, but its "Album Name" got the value of the "Single"'s name.
+ and determining exactly one "Track Known ID" according to it.
+* Track that was releases as a "Single" is taken from its parent album, but its "Album Name" got the value of the "Single"'s name.
  This may be solved by getting, alongside the Relinked Track ID, the Relinked Album ID, and overriding the DataFrame with it.
  This is dangerous and I don't want to do it right now.
+ Maybe build a new method specifically for replacing tracks' "Single" album ID with their "Real Album" ID.
 
 
 

@@ -9,6 +9,7 @@ FETCHING_TRACKS_ATTRS = "Fetching FullTrack attributes for {0} tracks (might tak
 TRACKS_ATTRS_FETCHED = "FullTrack attributes were successfully fetched for {0} tracks."
 API_SERVICE_UNAVAILABLE = 'Spotify API Service is unavailable. Original error: {0}'
 EMPTY_VALUES = 'No {0} values were given, so no DB-action was performed.'
+CANNOT_INSERT = 'ERROR: Could not insert the following: {0}'
 
 def write(message: str) -> None:
     trace = traceback.extract_stack()
