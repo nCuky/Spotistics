@@ -253,19 +253,22 @@ class SpotifyAPIClient:
 
     def get_full_tracks(self, tracks: pd.Series) -> tk.model.ModelList[tk.model.FullTrack]:
         """
-        For each track in the given dataframe, fetches its FullTrack object from the API.
+        For each track in the given dataframe, fetches its :class:`tk.model.FullTrack` object from the API.
+
         :param tracks: Series of all the required tracks' ID's.
         :return: Tekore ModelList of FullTracks, for the given tracks series.
         """
         unique_tracks = tracks.dropna().unique()
         unique_tracks_list = unique_tracks.tolist()
 
-        # Calling the API to get FullTracks for the given tracks' ID's:
         with self.client.token_as(self.user_token):
             log.write(message = log.FETCHING_TRACKS_ATTRS.format(unique_tracks.size))
+
             try:
+                # Calling the API to get FullTracks for the given tracks' ID's:
                 full_tracks = self.client.tracks(track_ids = unique_tracks_list,
                                                  market = self.client.current_user().country)
+
                 log.write(message = log.TRACKS_ATTRS_FETCHED.format(len(full_tracks)))
 
             except tk.ServiceUnavailable as ex:
@@ -276,14 +279,16 @@ class SpotifyAPIClient:
     def get_track_known_id_map(self, full_tracks: tk.model.ModelList[tk.model.FullTrack],
                                tracks: pd.Series = None) -> dict:
         """
-        For each given track, determine the single TrackID that is known to be valid and available.
+        For each given Track, determine the single TrackID that is known to be valid and available.
         There are two possible cases:
-        * if the track has a 'linked_from' object, the LinkedFrom ID is mapped to the given ID.
-        * if the track has no 'linked_from' object, the given id is mapped to itself.
-        If a 'full_tracks' ModelList object is given, the method uses it without calling the API.
-        Otherwise, the method calls the API with the given 'tracks' Series object.
+
+        * if the track **has** a ``linked_from`` object, the LinkedFrom ID is mapped to the given ID.
+        * if the track **has no** ``linked_from`` object, the given id is mapped to itself.
+        If a ``full_tracks`` (:class:`tk.model.ModelList`) object is given, the method uses it without calling the API.
+        Otherwise, the method calls the API with the given ``tracks`` Series object.
+
         :param full_tracks: Tekore ModelList of FullTracks, from which to take the TrackKnownID values.
-        :param tracks: Series of TracksID values, to call the API with.
+        :param tracks: Series of TrackID values, to call the API with.
         :return: Dictionary mapping each given ID to its 'known' ID (can be the same ID or different).
         """
         full_tracks = self.get_full_tracks(tracks) if full_tracks is None else full_tracks

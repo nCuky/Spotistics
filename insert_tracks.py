@@ -20,9 +20,6 @@ class DB:
     class TABLES:
         ALBUMS = 'albums'
         TRACKS_LISTEN_HISTORY = 'tracks_listen_history'
-        TRACKS_LINKED_FROM = 'tracks_linked_from'
-        ARTISTS_ALBUMS = 'artists_albums'
-        ARTISTS_TRACKS = 'artists_tracks'
 
     # region DB Names enums
 
@@ -121,36 +118,40 @@ class DB:
         log.write(*args)
 
     @staticmethod
-    def get_track_for_insert(track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> tuple | None:
-        """Turn a track into a tuple insertable into the tracks table."""
+    def get_track_for_insert(track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> dict | None:
+        """
+        Turn a track into a structure, insertable into the tracks table.
+
+        :param track: A Track object (dictionary or tekore model) from which to take the track values.
+        :return: Dictionary of the track's values."""
         match type(track):
             case dict():
-                values_out = (track['id'],
-                              track['href'],
-                              track['uri'],
-                              track['disc_number'],
-                              track['duration_ms'],
-                              track['explicit'],
-                              track['name'],
-                              str(track['preview_url']),
-                              track['track_number'],
-                              track['is_local'],
-                              track['popularity'],
-                              track['is_playable'])
+                values_out = {DB.TRACKS.ID          : track['id'],
+                              DB.TRACKS.HREF        : track['href'],
+                              DB.TRACKS.URI         : track['uri'],
+                              DB.TRACKS.DISC_NUMBER : track['disc_number'],
+                              DB.TRACKS.DURATION_MS : track['duration_ms'],
+                              DB.TRACKS.EXPLICIT    : track['explicit'],
+                              DB.TRACKS.NAME        : track['name'],
+                              DB.TRACKS.PREVIEW_URL : str(track['preview_url']),
+                              DB.TRACKS.TRACK_NUMBER: track['track_number'],
+                              DB.TRACKS.IS_LOCAL    : track['is_local'],
+                              DB.TRACKS.POPULARITY  : track['popularity'],
+                              DB.TRACKS.IS_PLAYABLE : track['is_playable']}
 
             case tk.model.Track | tk.model.FullTrack:
-                values_out = (track.id,
-                              track.href,
-                              track.uri,
-                              track.disc_number,
-                              track.duration_ms,
-                              track.explicit,
-                              track.name,
-                              str(track.preview_url),
-                              track.track_number,
-                              track.is_local,
-                              track.popularity,
-                              track.is_playable)
+                values_out = {DB.TRACKS.ID          : track.id,
+                              DB.TRACKS.HREF        : track.href,
+                              DB.TRACKS.URI         : track.uri,
+                              DB.TRACKS.DISC_NUMBER : track.disc_number,
+                              DB.TRACKS.DURATION_MS : track.duration_ms,
+                              DB.TRACKS.EXPLICIT    : track.explicit,
+                              DB.TRACKS.NAME        : track.name,
+                              DB.TRACKS.PREVIEW_URL : str(track.preview_url),
+                              DB.TRACKS.TRACK_NUMBER: track.track_number,
+                              DB.TRACKS.IS_LOCAL    : track.is_local,
+                              DB.TRACKS.POPULARITY  : track.popularity,
+                              DB.TRACKS.IS_PLAYABLE : track.is_playable}
 
             case _:
                 values_out = None
@@ -226,7 +227,8 @@ class DB:
         return values_out
 
     @staticmethod
-    def get_albums_of_artists_for_insert(track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> list | None:
+    def get_albums_of_artists_for_insert(
+            track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> list | None:
         """Turn a track into a tuple list insertable into the artists_album table."""
         match type(track):
             case dict():
@@ -317,6 +319,7 @@ class DB:
     @staticmethod
     def get_listen_history_df_for_insert(listen_history_df: pd.DataFrame) -> pd.DataFrame:
         """Returns a DataFrame ready for insertion to the DB.
+
         :param listen_history_df: DataFrame to insert.
         :return: DataFrame ready for insertion."""
         df_to_insert = listen_history_df[[spdcol.TIMESTAMP, spdcol.USERNAME, spdcol.TRACK_ID, spdcol.PLATFORM,
@@ -366,14 +369,14 @@ class DB:
         # self.insert_artists_track(DB.get_artists_track_for_insert(track))
         self.insert_linked_from(DB.get_linked_from_for_insert(track))
 
-    def insert_track(self, track_values: tuple) -> None:
+    def insert_track(self, track_values: dict) -> None:
         """Insert track values to DB. Does not commit."""
         if track_values is None:
             log.write("WARNING: " + log.EMPTY_VALUES.format('Track'))
 
         else:
             try:
-                query = f"""INSERT OR REPLACE INTO {DB.TRACKS.__name__} 
+                query = f"""INSERT OR REPLACE INTO {DB.TRACKS.__name__}
                 ({DB.TRACKS.ID},
                 {DB.TRACKS.HREF},
                 {DB.TRACKS.URI},
@@ -386,9 +389,21 @@ class DB:
                 {DB.TRACKS.IS_LOCAL},
                 {DB.TRACKS.POPULARITY},
                 {DB.TRACKS.IS_PLAYABLE}
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"""
+                
+                VALUES (:{DB.TRACKS.ID},
+                :{DB.TRACKS.HREF},
+                :{DB.TRACKS.URI},
+                :{DB.TRACKS.DISC_NUMBER},
+                :{DB.TRACKS.DURATION_MS},
+                :{DB.TRACKS.EXPLICIT},
+                :{DB.TRACKS.NAME},
+                :{DB.TRACKS.PREVIEW_URL},
+                :{DB.TRACKS.TRACK_NUMBER},
+                :{DB.TRACKS.IS_LOCAL},
+                :{DB.TRACKS.POPULARITY},
+                :{DB.TRACKS.IS_PLAYABLE});"""
 
-                self.cursor.execute(__sql = query, __parameters = track_values)
+                self.cursor.execute(query, track_values)
 
             except sqlite3.IntegrityError as e:
                 DB.eprint(log.CANNOT_INSERT.format(str(track_values)))
@@ -451,26 +466,36 @@ class DB:
                 DB.eprint(f"sqlite3.OperationalError: {e}")
 
     def insert_linked_from(self, linked_track_values: tuple) -> None:
-        """Insert linked_from values to DB. Does not commit."""
+        """
+        Insert ``linked_from`` values to DB.
+
+        Does not commit.
+
+        :param linked_track_values: Tuple of a Linked Track, with the original track's ID ('linked_from')
+                                    and its Relinked Track ID.
+        :return: None.
+        """
         if linked_track_values is None:
             log.write("WARNING: " + log.EMPTY_VALUES.format('Linked Track'))
 
         else:
             try:
-                if len(linked_track_values) == 2:
-                    self.cursor.execute(f"""INSERT OR REPLACE INTO {DB.TABLES.TRACKS_LINKED_FROM} (pk_id,
-                    fk_track_id)
-                    VALUES {str(linked_track_values)}""")
+                # if len(linked_track_values) == 2:
+                query = f"""INSERT OR REPLACE INTO {DB.TRACKS_LINKED_FROM.__name__} 
+                ({DB.TRACKS_LINKED_FROM.FROM_ID},
+                {DB.TRACKS_LINKED_FROM.RELINKED_ID})
+                VALUES (?, ?)"""
 
-                elif len(linked_track_values) == 4:
-                    self.cursor.execute(f"""INSERT OR REPLACE INTO {DB.TABLES.TRACKS_LINKED_FROM} (pk_id,
-                    href,
-                    uri,
-                    fk_track_id)
-                    VALUES {str(linked_track_values)}""")
+                self.cursor.execute(query, __parameters = linked_track_values)
 
-                else:
-                    DB.eprint("WARNING: Wrong number of values to insert. Should be either 2 or 4. Skipping")
+                # elif len(linked_track_values) == 4:
+                #     self.cursor.execute(f"""INSERT OR REPLACE INTO {DB.TRACKS_LINKED_FROM.__name__}
+                #     ({DB.TRACKS_LINKED_FROM.FROM_ID},
+                #     {DB.TRACKS_LINKED_FROM.RELINKED_ID})
+                #     VALUES (?, ?)""", __parameters = linked_track_values)
+
+                # else:
+                #     DB.eprint("WARNING: Wrong number of values to insert. Should be either 2 or 4. Skipping")
 
             except sqlite3.IntegrityError as e:
                 DB.eprint(log.CANNOT_INSERT.format(str(linked_track_values)))
@@ -538,7 +563,7 @@ class DB:
         else:
             for artist_album in artists_albums_values:
                 try:
-                    self.cursor.execute(f"""INSERT OR REPLACE INTO {DB.TABLES.ARTISTS_ALBUMS} (pk_id,
+                    self.cursor.execute(f"""INSERT OR REPLACE INTO artists_albums (pk_id,
                     href,
                     uri,
                     name,
@@ -565,7 +590,7 @@ class DB:
         else:
             for artist_track in artists_tracks_values:
                 try:
-                    self.cursor.execute(f"""INSERT OR REPLACE INTO {DB.TABLES.ARTISTS_TRACKS} (pk_id,
+                    self.cursor.execute(f"""INSERT OR REPLACE INTO artists_tracks (pk_id,
                     href,
                     uri,
                     name,
@@ -580,8 +605,15 @@ class DB:
                     DB.eprint(f"ERROR: Could not insert the following: {str(artist_track)}")
                     DB.eprint(f"sqlite3.OperationalError: {e}")
 
-    def insert_listen_history_df(self, listen_history_df: pd.DataFrame) -> None:
-        """Insert values from a prepared Listen History DataFrame to DB. Does not commit."""
+    def __insert_listen_history_df(self, listen_history_df: pd.DataFrame) -> None:
+        """
+        Insert values from a prepared Listen History DataFrame to DB.
+
+        Does not commit.
+
+        :param listen_history_df: DataFrame with the prepared Listen History data.
+        :return: None.
+        """
         if listen_history_df is None:
             log.write("WARNING: " + log.EMPTY_VALUES.format('Listen History'))
 
@@ -602,19 +634,20 @@ class DB:
                              str(listened_track.skipped))
 
                 try:
-                    query = f"""INSERT OR REPLACE INTO {DB.TABLES.TRACKS_LISTEN_HISTORY} (pk_timestamp,
-                    pk_username,
-                    pk_track_id,
-                    platform,
-                    ms_played,
-                    conn_country,
-                    uri,
-                    reason_start,
-                    reason_end,
-                    shuffle,
-                    offline,
-                    incognito_mode,
-                    skipped)
+                    query = f"""INSERT OR REPLACE INTO {DB.TRACKS_LISTEN_HISTORY.__name__} 
+                    ({DB.TRACKS_LISTEN_HISTORY.TIMESTAMP},
+                    ({DB.TRACKS_LISTEN_HISTORY.USERNAME},
+                    ({DB.TRACKS_LISTEN_HISTORY.TRACK_ID},
+                    ({DB.TRACKS_LISTEN_HISTORY.PLATFORM},
+                    ({DB.TRACKS_LISTEN_HISTORY.MS_PLAYED},
+                    ({DB.TRACKS_LISTEN_HISTORY.CONN_COUNTRY},
+                    ({DB.TRACKS_LISTEN_HISTORY.URI},
+                    ({DB.TRACKS_LISTEN_HISTORY.REASON_START},
+                    ({DB.TRACKS_LISTEN_HISTORY.REASON_END},
+                    ({DB.TRACKS_LISTEN_HISTORY.SHUFFLE},
+                    ({DB.TRACKS_LISTEN_HISTORY.OFFLINE},
+                    ({DB.TRACKS_LISTEN_HISTORY.INCOGNITO_MODE},
+                    ({DB.TRACKS_LISTEN_HISTORY.SKIPPED})
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
 
                     self.cursor.execute(__sql = query, __parameters = track_str)
@@ -628,8 +661,9 @@ class DB:
                     DB.eprint(f"sqlite3.OperationalError: {e}")
 
     def insert_listen_history(self, df: pd.DataFrame) -> None:
-        """Insert to DB listen history table using pandas' .to_sql() method.
-        Removes duplicate rows before inserting.
+        """Insert Listen History table to the DB.
+        Cleans data and removes duplicate rows before inserting.
+
         :param df: DataFrame with Listen History records for inserting.
         """
         df_to_insert = DB.get_listen_history_df_for_insert(df)
@@ -637,28 +671,6 @@ class DB:
         # df_to_insert.to_sql(DB.TABLES.TRACKS_LISTEN_HISTORY, con = self.connection, if_exists = "append",
         # index = False)
 
-        self.insert_listen_history_df(df_to_insert)
+        self.__insert_listen_history_df(df_to_insert)
 
     # endregion Insertion Logic
-
-
-# Old logic before refactoring into a DB class:
-if 0 == 1:
-    # Load json data
-    with open("full_tracks.json", "r") as f:
-        tracks = json.load(f)
-
-    # Connect to DB
-    conn = sqlite3.connect("tracks.db")
-    cur = conn.cursor()
-
-    # Load data frame
-    known_tracks = pd.read_csv("known_tracks_2022-09-17_16-50-57.csv")
-
-    DB.insert_listen_history(known_tracks, conn)
-
-    # Insert tracks from Json data
-    for t in tracks:
-        DB.insert_track_full(t, cur)
-
-    conn.commit()

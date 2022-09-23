@@ -180,17 +180,18 @@ class Logic:
         track_known_id_map = self.my_spapi.get_track_known_id_map(full_tracks = full_tracks)
         self.my_spdt.add_track_known_id(track_known_id_map)
 
-        all_simple_artists: pd.DataFrame = None
-        all_simple_albums: pd.DataFrame = None
-        all_tracks_of_albums: pd.DataFrame = None
-        all_albums_of_artists: pd.DataFrame = None
+        all_simple_artists = pd.DataFrame(columns = ['artist_id', 'href', 'uri',
+                                                     'name', 'total_followers', 'popularity'])
+
+        all_simple_albums = pd.DataFrame(columns = ['album_id', 'href', 'uri', 'name', 'album_type',
+                                                    'total_tracks', 'release_date', 'release_date_precision'])
+
+        all_tracks_of_albums = pd.DataFrame(columns = ['album_id', 'track_id'])
+
+        all_albums_of_artists = pd.DataFrame(columns = ['artist_id', 'album_id'])
 
         for track in full_tracks:
-            # Collecting all Artists:
-            # track_artists = self.extract_simple_artists(track)
-            # pd.concat([all_simple_artists, track_artists])
-
-            # Collecting all Albums:
+            # Copying current track's Album to a collection of all Albums:
             album = pd.Series({'album_id'              : track.album.id,
                                'href'                  : track.album.href,
                                'uri'                   : track.album.uri,
@@ -200,69 +201,39 @@ class Logic:
                                'release_date'          : track.album.release_date,
                                'release_date_precision': track.album.release_date_precision})
 
-            pd.concat([all_simple_albums, album.to_frame().T], ignore_index = True)
+            all_simple_albums = pd.concat([all_simple_albums, album.to_frame().T], ignore_index = True)
 
-            # Collecting all Tracks-of-Albums:
-            track_of_album = pd.Series({'album_id': track.album.id, 'track_id': track.id})
-            pd.concat([all_tracks_of_albums, track_of_album.to_frame().T], ignore_index = True)
+            # Copying current track to a collection of all Tracks-of-Albums:
+            track_of_album = pd.Series({'album_id': track.album.id,
+                                        'track_id': track.id})
+            all_tracks_of_albums = pd.concat([all_tracks_of_albums, track_of_album.to_frame().T], ignore_index = True)
 
             for artist in track.artists:
-                # Collecting all Artists that belong to the track:
+                # Copying current track's artists to a collection of all Artists:
                 all_simple_artists = pd.concat([all_simple_artists,
-                                                pd.DataFrame([artist.id, artist.href, artist.uri,
-                                                              artist.name, None, None],
-                                                             columns = ['artist_id', 'href', 'uri',
-                                                                        'name', 'total_followers', 'popularity'])],
+                                                pd.DataFrame(data = [[artist.id, artist.href, artist.uri,
+                                                                      artist.name, None, None]],
+                                                             columns = all_simple_artists.columns.to_list())],
                                                ignore_index = True)
 
-                # Collecting Albums-of-Artists.
+                # Copying current track's artists to a collection of all Albums-of-Artists.
                 # Only Track's Artists that also belong to the Track's Album's Artists
-                # (not in an 'Appears On' relationship) are collected.
+                # (except when related to it with 'Appears On' relationship) are collected.
                 if (artist in track.album.artists) & (
-                        track.album.album_group is not None &
-                        track.album.album_group != tk.model.AlbumGroup.appears_on):
-                    album_of_artist = pd.Series({'artist_id': artist.id, 'album_id': track.album.id})
-                    pd.concat([all_albums_of_artists, album_of_artist.to_frame().T], ignore_index = True)
+                        (track.album.album_group is not None) &
+                        (track.album.album_group != tk.model.AlbumGroup.appears_on)):
+                    album_of_artist = pd.Series({'artist_id': artist.id,
+                                                 'album_id' : track.album.id})
+                    all_albums_of_artists = pd.concat([all_albums_of_artists, album_of_artist.to_frame().T],
+                                                      ignore_index = True)
 
             self.my_db.insert_track_full(track)
 
         all_simple_artists.drop_duplicates(subset = 'artist_id', inplace = True)
         all_simple_albums.drop_duplicates(subset = 'album_id', inplace = True)
-        all_tracks_of_albums.drop_duplicates(subset = ['album_id', 'track_id'], inplace = True)
-        all_albums_of_artists.drop_duplicates(subset = ['artist_id', 'album_id'], inplace = True)
+        all_tracks_of_albums.drop_duplicates(subset = all_tracks_of_albums.columns.to_list(), inplace = True)
+        all_albums_of_artists.drop_duplicates(subset = all_albums_of_artists.columns.to_list(), inplace = True)
 
         self.my_db.insert_listen_history(self.my_spdt.get_tracks_listen_data())
 
         self.my_db.commit()
-
-    @staticmethod
-    def extract_simple_artists(full_track: tk.model.FullTrack) -> pd.DataFrame:
-        """From a given :class:`tk.model.FullTrack` object, extract its Artists and return them in a DataFrame.
-
-        :param full_track: FullTrack object.
-        :return: DataFrame with all the track's artists."""
-        artists_df = pd.concat([pd.DataFrame([artist.id, artist.href, artist.uri, artist.name, None, None],
-                                             columns = ['artist_id', 'href', 'uri', 'name', 'total_followers',
-                                                        'popularity'])
-                                for artist in full_track.artists], ignore_index = True)
-
-        artists_df.drop_duplicates(subset = 'artist_id', inplace = True)
-
-        return artists_df
-
-    @staticmethod
-    def extract_simple_album(full_track: tk.model.FullTrack) -> pd.Series:
-        """From a given :class:`tk.model.FullTrack` object, extract its Album and return it in a Series.
-
-        :param full_track: FullTrack object.
-        :return: Series with the track's Album."""
-        album = pd.Series({'album_id'              : full_track.album.id,
-                           'href'                  : full_track.album.href,
-                           'uri'                   : full_track.album.uri,
-                           'name'                  : full_track.album.name,
-                           'album_type'            : full_track.album.album_type,
-                           'total_tracks'          : full_track.album.total_tracks,
-                           'release_date'          : full_track.album.release_date,
-                           'release_date_precision': full_track.album.release_date_precision})
-
-        return album
