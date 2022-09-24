@@ -457,6 +457,7 @@ class DB:
                 {DB.ALBUMS.HREF},
                 {DB.ALBUMS.URI},
                 {DB.ALBUMS.NAME},
+                {DB.ALBUMS.ALBUM_TYPE},
                 {DB.ALBUMS.TOTAL_TRACKS},
                 {DB.ALBUMS.RELEASE_DATE},
                 {DB.ALBUMS.RELEASE_DATE_PRECISION})
@@ -465,6 +466,7 @@ class DB:
                 :{DB.ALBUMS.HREF},
                 :{DB.ALBUMS.URI},
                 :{DB.ALBUMS.NAME},
+                :{DB.ALBUMS.ALBUM_TYPE},
                 :{DB.ALBUMS.TOTAL_TRACKS},
                 :{DB.ALBUMS.RELEASE_DATE},
                 :{DB.ALBUMS.RELEASE_DATE_PRECISION});"""
