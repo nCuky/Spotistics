@@ -118,49 +118,38 @@ class DB:
         log.write(*args)
 
     @staticmethod
-    def get_track_for_insert(track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> dict | None:
+    def get_track_for_insert(track: tk.model.Track | tk.model.FullTrack | None = None) -> dict | None:
         """
-        Turn a track into a structure, insertable into the tracks table.
+        Turn a track into a structure, insertable into the Tracks table.
 
-        :param track: A Track object (dictionary or tekore model) from which to take the track values.
-        :return: Dictionary of the track's values."""
-        match type(track):
-            case dict():
-                values_out = {DB.TRACKS.ID          : track['id'],
-                              DB.TRACKS.HREF        : track['href'],
-                              DB.TRACKS.URI         : track['uri'],
-                              DB.TRACKS.DISC_NUMBER : track['disc_number'],
-                              DB.TRACKS.DURATION_MS : track['duration_ms'],
-                              DB.TRACKS.EXPLICIT    : track['explicit'],
-                              DB.TRACKS.NAME        : track['name'],
-                              DB.TRACKS.PREVIEW_URL : str(track['preview_url']),
-                              DB.TRACKS.TRACK_NUMBER: track['track_number'],
-                              DB.TRACKS.IS_LOCAL    : track['is_local'],
-                              DB.TRACKS.POPULARITY  : track['popularity'],
-                              DB.TRACKS.IS_PLAYABLE : track['is_playable']}
+        :param track: A Track (or FullTrack) object from which to take the track values.
+        :return: Dictionary with the track's values."""
+        values_out = None
 
-            case tk.model.Track | tk.model.FullTrack:
-                values_out = {DB.TRACKS.ID          : track.id,
-                              DB.TRACKS.HREF        : track.href,
-                              DB.TRACKS.URI         : track.uri,
-                              DB.TRACKS.DISC_NUMBER : track.disc_number,
-                              DB.TRACKS.DURATION_MS : track.duration_ms,
-                              DB.TRACKS.EXPLICIT    : track.explicit,
-                              DB.TRACKS.NAME        : track.name,
-                              DB.TRACKS.PREVIEW_URL : str(track.preview_url),
-                              DB.TRACKS.TRACK_NUMBER: track.track_number,
-                              DB.TRACKS.IS_LOCAL    : track.is_local,
-                              DB.TRACKS.POPULARITY  : track.popularity,
-                              DB.TRACKS.IS_PLAYABLE : track.is_playable}
-
-            case _:
-                values_out = None
+        if track is not None:
+            values_out = {DB.TRACKS.ID          : track.id,
+                          DB.TRACKS.HREF        : track.href,
+                          DB.TRACKS.URI         : track.uri,
+                          DB.TRACKS.DISC_NUMBER : track.disc_number,
+                          DB.TRACKS.DURATION_MS : track.duration_ms,
+                          DB.TRACKS.EXPLICIT    : track.explicit,
+                          DB.TRACKS.NAME        : track.name,
+                          DB.TRACKS.PREVIEW_URL : str(track.preview_url),
+                          DB.TRACKS.TRACK_NUMBER: track.track_number,
+                          DB.TRACKS.IS_LOCAL    : track.is_local,
+                          DB.TRACKS.POPULARITY  : track.popularity,
+                          DB.TRACKS.IS_PLAYABLE : track.is_playable}
 
         return values_out
 
     @staticmethod
-    def get_album_for_insert(track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> tuple | None:
-        """Turn a track into a tuple insertable into the album table."""
+    def get_album_for_insert(track: tk.model.Track | tk.model.FullTrack | None = None) -> dict | None:
+        """
+        Turn a track's Album into a tuple insertable into the Albums table.
+
+        :param track: A Track (or FullTrack) object from which to take the album values.
+        :return: Dictionary with the album's values.
+        """
         match type(track):
             case dict():
                 album = track['album']
@@ -439,23 +428,30 @@ class DB:
                 DB.eprint(log.CANNOT_INSERT.format(str(artist_values)))
                 DB.eprint(f"sqlite3.OperationalError: {e}")
 
-    def insert_album(self, album_values: tuple) -> None:
+    def insert_album(self, album_values: dict) -> None:
         """Insert album values to DB. Does not commit."""
         if album_values is None:
             log.write("WARNING: " + log.EMPTY_VALUES.format('Album'))
 
         else:
             try:
-                query = f"""INSERT OR REPLACE INTO {DB.ALBUMS.__name__} 
-                ({DB.ALBUMS.ID},
+                query = f"""INSERT OR REPLACE INTO {DB.ALBUMS.__name__} (
+                {DB.ALBUMS.ID},
                 {DB.ALBUMS.HREF},
                 {DB.ALBUMS.URI},
                 {DB.ALBUMS.NAME},
                 {DB.ALBUMS.TOTAL_TRACKS},
                 {DB.ALBUMS.RELEASE_DATE},
                 {DB.ALBUMS.RELEASE_DATE_PRECISION})
-                VALUES (?, ?, ?, ?, ?, ?, ?);"""
-                self.cursor.execute(__sql = query, __parameters = album_values)
+                VALUES (
+                :{DB.ALBUMS.ID},
+                :{DB.ALBUMS.HREF},
+                :{DB.ALBUMS.URI},
+                :{DB.ALBUMS.NAME},
+                :{DB.ALBUMS.TOTAL_TRACKS},
+                :{DB.ALBUMS.RELEASE_DATE},
+                :{DB.ALBUMS.RELEASE_DATE_PRECISION});"""
+                self.cursor.execute(query, album_values)
 
             except sqlite3.IntegrityError as e:
                 DB.eprint(log.CANNOT_INSERT.format(str(album_values)))
@@ -465,7 +461,7 @@ class DB:
                 DB.eprint(log.CANNOT_INSERT.format(str(album_values)))
                 DB.eprint(f"sqlite3.OperationalError: {e}")
 
-    def insert_linked_from(self, linked_track_values: tuple) -> None:
+    def insert_linked_from(self, linked_track_values: dict) -> None:
         """
         Insert ``linked_from`` values to DB.
 
