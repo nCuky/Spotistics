@@ -448,7 +448,7 @@ class DB:
         df_to_insert = DB.get_listen_history_df_for_insert(df)
 
         # df_to_insert.to_sql(DB.TABLES.TRACKS_LISTEN_HISTORY, con = self.connection, if_exists = "append",
-        # index = False)b
+        # index = False)
 
         self.__insert_listen_history_df(df_to_insert)
 
