@@ -5,7 +5,7 @@ import pandas as pd
 import tekore as tk
 import log
 # import pyspark as sk
-import insert_tracks as db
+import db
 
 
 class Logic:
