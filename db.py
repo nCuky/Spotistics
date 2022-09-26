@@ -15,14 +15,14 @@ class DB:
     """
     Manages the local DB for saving Spotify data for further calculations.
     """
-    # region DB Names enums
 
-    __name__ = "my_spotify_data.db"
+    # region DB Names enums
 
     @dataclass(frozen = True)
     class TRACKS:
-        __name__ = 'tracks'
-        ID = 'pk_id'
+        TBL_NAME = 'tracks'
+
+        ID = 'track_id'
         HREF = 'href'
         URI = 'uri'
         DISC_NUMBER = 'disc_number'
@@ -37,8 +37,9 @@ class DB:
 
     @dataclass(frozen = True)
     class ALBUMS:
-        __name__ = 'albums'
-        ID = 'pk_id'
+        TBL_NAME = 'albums'
+
+        ID = 'album_id'
         HREF = 'href'
         URI = 'uri'
         NAME = 'name'
@@ -49,8 +50,9 @@ class DB:
 
     @dataclass(frozen = True)
     class ARTISTS:
-        __name__ = 'artists'
-        ID = 'pk_id'
+        TBL_NAME = 'artists'
+
+        ID = 'artist_id'
         HREF = 'href'
         URI = 'uri'
         NAME = 'name'
@@ -58,40 +60,46 @@ class DB:
         POPULARITY = 'popularity'
 
     @dataclass(frozen = True)
-    class ALBUMS_OF_ARTISTS:
-        __name__ = 'albums_of_artists'
-        ARTIST_ID = 'pk_artist_id'
-        ALBUM_ID = 'pk_album_id'
+    class ARTISTS_ALBUMS:
+        TBL_NAME = 'artists_albums'
+        ARTIST_ID = 'artist_id'
+        ALBUM_ID = 'album_id'
 
     @dataclass(frozen = True)
-    class TRACKS_OF_ALBUMS:
-        __name__ = 'tracks_of_albums'
-        ALBUM_ID = 'pk_album_id'
-        TRACK_ID = 'pk_track_id'
+    class ALBUMS_TRACKS:
+        TBL_NAME = 'albums_tracks'
+
+        ALBUM_ID = 'album_id'
+        TRACK_ID = 'track_id'
 
     @dataclass(frozen = True)
     class GENRES:
-        __name__ = 'genres'
-        ID = 'pk_id'
+        TBL_NAME = 'genres'
+
+        ID = 'genre_id'
+        NAME = 'name'
 
     @dataclass(frozen = True)
-    class GENRES_OF_ARTISTS:
-        __name__ = 'genres_of_artists'
-        ARTIST_ID = 'pk_artist_id'
-        GENRE_ID = 'pk_genre_id'
+    class ARTISTS_GENRES:
+        TBL_NAME = 'artists_genres'
+
+        ARTIST_ID = 'artist_id'
+        GENRE_ID = 'genre_id'
 
     @dataclass(frozen = True)
     class TRACKS_LINKED_FROM:
-        __name__ = 'tracks_linked_from'
-        FROM_ID = 'pk_id'
-        RELINKED_ID = 'fk_track_id'
+        TBL_NAME = 'linked_tracks'
+
+        FROM_ID = 'linked_from_id'
+        RELINKED_ID = 'track_known_id'
 
     @dataclass(frozen = True)
     class TRACKS_LISTEN_HISTORY:
-        __name__ = 'tracks_listen_history'
-        TIMESTAMP = 'pk_timestamp'
-        USERNAME = 'pk_username'
-        TRACK_ID = 'pk_track_id'
+        TBL_NAME = 'tracks_listen_history'
+
+        TIMESTAMP = 'timestamp'
+        USERNAME = 'username'
+        TRACK_ID = 'track_id'
         PLATFORM = 'platform'
         MS_PLAYED = 'ms_played'
         CONN_COUNTRY = 'conn_country'
@@ -147,14 +155,14 @@ class DB:
         :return: Dictionary with the album's values.
         """
         album = track.album
-        values_out = (album.id,
-                      album.href,
-                      album.uri,
-                      album.name,
-                      album.album_type,
-                      album.total_tracks,
-                      album.release_date,
-                      str(album.release_date_precision))
+        values_out = {DB.ALBUMS.ID                    : album.id,
+                      DB.ALBUMS.HREF                  : album.href,
+                      DB.ALBUMS.URI                   : album.uri,
+                      DB.ALBUMS.NAME                  : album.name,
+                      DB.ALBUMS.ALBUM_TYPE            : album.album_type,
+                      DB.ALBUMS.TOTAL_TRACKS          : album.total_tracks,
+                      DB.ALBUMS.RELEASE_DATE          : album.release_date,
+                      DB.ALBUMS.RELEASE_DATE_PRECISION: str(album.release_date_precision)}
         # track.id)
 
         return values_out
@@ -170,14 +178,12 @@ class DB:
         linked = track.linked_from
 
         if linked is None:
-            # eprint("WARNING: linked_from attribute is null")
-            values_out = (track.id, track.id)
+            values_out = {DB.TRACKS_LINKED_FROM.FROM_ID    : track.id,
+                          DB.TRACKS_LINKED_FROM.RELINKED_ID: track.id}
 
         else:
-            values_out = (linked.id,
-                          # linked.href,
-                          # linked.uri,
-                          track.id)
+            values_out = {DB.TRACKS_LINKED_FROM.FROM_ID    : linked.id,
+                          DB.TRACKS_LINKED_FROM.RELINKED_ID: track.id}
 
         return values_out
 
@@ -199,69 +205,69 @@ class DB:
     #
     #     return values_out
 
-    @staticmethod
-    @deprecated(details = "Logic moved to method save_full_tracks_to_db in class Logic.")
-    def get_artists_album_for_insert(track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> list | None:
-        """Turn a track into a tuple list insertable into the artists_album table."""
-        match type(track):
-            case dict():
-                artists = track['album']['artists']
-                values_out = [None] * len(artists)
+    # @staticmethod
+    # @deprecated(details = "Logic moved to method save_full_tracks_to_db in class Logic.")
+    # def get_artists_album_for_insert(track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> list | None:
+    #     """Turn a track into a tuple list insertable into the artists_album table."""
+    #     match type(track):
+    #         case dict():
+    #             artists = track['album']['artists']
+    #             values_out = [None] * len(artists)
+    #
+    #             for i, artist in enumerate(artists):
+    #                 values_out[i] = (artist['id'],
+    #                                  # artist['href'],
+    #                                  # artist['uri'],
+    #                                  # artist['name'],
+    #                                  track['album']['id'])
+    #
+    #         case tk.model.Track | tk.model.FullTrack:
+    #             artists = track.album.artists
+    #             values_out = [None] * len(artists)
+    #
+    #             for (i, artist) in enumerate(artists):
+    #                 values_out[i] = (artist.id,
+    #                                  # artist.href,
+    #                                  # artist.uri,
+    #                                  # artist.name,
+    #                                  track.album.id)
+    #
+    #         case _:
+    #             values_out = None
+    #
+    #     return values_out
 
-                for i, artist in enumerate(artists):
-                    values_out[i] = (artist['id'],
-                                     # artist['href'],
-                                     # artist['uri'],
-                                     # artist['name'],
-                                     track['album']['id'])
-
-            case tk.model.Track | tk.model.FullTrack:
-                artists = track.album.artists
-                values_out = [None] * len(artists)
-
-                for (i, artist) in enumerate(artists):
-                    values_out[i] = (artist.id,
-                                     # artist.href,
-                                     # artist.uri,
-                                     # artist.name,
-                                     track.album.id)
-
-            case _:
-                values_out = None
-
-        return values_out
-
-    @staticmethod
-    @deprecated(details = """Please use ``get_tracks_of_albums_for_insert``.""")
-    def get_artists_track_for_insert(track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> list | None:
-        """Turn a track into a tuple list insertable into the artists_track table."""
-        match type(track):
-            case dict():
-                artists = track['artists']
-                values_out = [None] * len(artists)
-
-                for i, artist in enumerate(artists):
-                    values_out[i] = (artist['id'],
-                                     artist['href'],
-                                     artist['uri'],
-                                     artist['name'],
-                                     track['id'])
-
-            case tk.model.Track | tk.model.FullTrack:
-                artists = track.artists
-                values_out = [None] * len(artists)
-
-                for i, artist in enumerate(artists):
-                    values_out[i] = (artist.id,
-                                     artist.href,
-                                     artist.uri,
-                                     artist.name,
-                                     track.id)
-
-            case _:
-                values_out = None
-
-        return values_out
+    # @staticmethod
+    # @deprecated(details = """Please use ``get_tracks_of_albums_for_insert``.""")
+    # def get_artists_track_for_insert(track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> list | None:
+    #     """Turn a track into a tuple list insertable into the artists_track table."""
+    #     match type(track):
+    #         case dict():
+    #             artists = track['artists']
+    #             values_out = [None] * len(artists)
+    #
+    #             for i, artist in enumerate(artists):
+    #                 values_out[i] = (artist['id'],
+    #                                  artist['href'],
+    #                                  artist['uri'],
+    #                                  artist['name'],
+    #                                  track['id'])
+    #
+    #         case tk.model.Track | tk.model.FullTrack:
+    #             artists = track.artists
+    #             values_out = [None] * len(artists)
+    #
+    #             for i, artist in enumerate(artists):
+    #                 values_out[i] = (artist.id,
+    #                                  artist.href,
+    #                                  artist.uri,
+    #                                  artist.name,
+    #                                  track.id)
+    #
+    #         case _:
+    #             values_out = None
+    #
+    #     return values_out
 
     @staticmethod
     def get_listen_history_df_for_insert(listen_history_df: pd.DataFrame) -> pd.DataFrame:
@@ -296,7 +302,8 @@ class DB:
         Initializes the DB Manager for working with the DB.
         """
         # Connect to DB
-        self.connection = sqlite3.connect(DB.__name__)
+        self._db_filename_ = "my_spotify_data.db"
+        self.connection = sqlite3.connect(self._db_filename_)
         self.cursor = self.connection.cursor()
 
     def commit(self) -> None:
@@ -327,7 +334,7 @@ class DB:
 
         else:
             try:
-                query = f"""INSERT OR REPLACE INTO {DB.TRACKS.__name__}
+                query = f"""INSERT OR REPLACE INTO {DB.TRACKS.TBL_NAME}
                 ({DB.TRACKS.ID},
                 {DB.TRACKS.HREF},
                 {DB.TRACKS.URI},
@@ -393,7 +400,7 @@ class DB:
                              str(listened_track.skipped))
 
                 try:
-                    query = f"""INSERT OR REPLACE INTO {DB.TRACKS_LISTEN_HISTORY.__name__} 
+                    query = f"""INSERT OR REPLACE INTO {DB.TRACKS_LISTEN_HISTORY.TBL_NAME} 
                     ({DB.TRACKS_LISTEN_HISTORY.TIMESTAMP},
                     {DB.TRACKS_LISTEN_HISTORY.USERNAME},
                     {DB.TRACKS_LISTEN_HISTORY.TRACK_ID},
@@ -470,7 +477,7 @@ class DB:
 
         else:
             try:
-                query = f"""INSERT OR REPLACE INTO {DB.TRACKS.__name__}
+                query = f"""INSERT OR REPLACE INTO {DB.TRACKS.TBL_NAME}
                 ({DB.TRACKS.ID},
                 {DB.TRACKS.HREF},
                 {DB.TRACKS.URI},
@@ -514,7 +521,7 @@ class DB:
 
         else:
             try:
-                query = f"""INSERT OR REPLACE INTO {DB.ARTISTS.__name__} 
+                query = f"""INSERT OR REPLACE INTO {DB.ARTISTS.TBL_NAME} 
                 ({DB.ARTISTS.ID},
                 {DB.ARTISTS.HREF},
                 {DB.ARTISTS.URI},
@@ -546,7 +553,7 @@ class DB:
 
         else:
             try:
-                query = f"""INSERT OR REPLACE INTO {DB.ALBUMS.__name__} 
+                query = f"""INSERT OR REPLACE INTO {DB.ALBUMS.TBL_NAME} 
                 ({DB.ALBUMS.ID},
                 {DB.ALBUMS.HREF},
                 {DB.ALBUMS.URI},
@@ -591,7 +598,7 @@ class DB:
         else:
             try:
                 # if len(linked_track_values) == 2:
-                query = f"""INSERT OR REPLACE INTO {DB.TRACKS_LINKED_FROM.__name__} 
+                query = f"""INSERT OR REPLACE INTO {DB.TRACKS_LINKED_FROM.TBL_NAME} 
                 ({DB.TRACKS_LINKED_FROM.FROM_ID},
                 {DB.TRACKS_LINKED_FROM.RELINKED_ID})
                 
@@ -601,7 +608,7 @@ class DB:
                 self.cursor.execute(query, linked_track_values)
 
                 # elif len(linked_track_values) == 4:
-                #     self.cursor.execute(f"""INSERT OR REPLACE INTO {DB.TRACKS_LINKED_FROM.__name__}
+                #     self.cursor.execute(f"""INSERT OR REPLACE INTO {DB.TRACKS_LINKED_FROM.TBL_NAME}
                 #     ({DB.TRACKS_LINKED_FROM.FROM_ID},
                 #     {DB.TRACKS_LINKED_FROM.RELINKED_ID})
                 #     VALUES (?, ?)""", __parameters = linked_track_values)
@@ -625,12 +632,12 @@ class DB:
         else:
             for artist_album in artists_albums_values:
                 try:
-                    query = f"""INSERT OR REPLACE INTO {DB.ALBUMS_OF_ARTISTS.__name__} 
-                    ({DB.ALBUMS_OF_ARTISTS.ARTIST_ID},
-                    {DB.ALBUMS_OF_ARTISTS.ALBUM_ID})
+                    query = f"""INSERT OR REPLACE INTO {DB.ARTISTS_ALBUMS.TBL_NAME} 
+                    ({DB.ARTISTS_ALBUMS.ARTIST_ID},
+                    {DB.ARTISTS_ALBUMS.ALBUM_ID})
                     
-                    VALUES (:{DB.ALBUMS_OF_ARTISTS.ARTIST_ID},
-                    :{DB.ALBUMS_OF_ARTISTS.ALBUM_ID})"""
+                    VALUES (:{DB.ARTISTS_ALBUMS.ARTIST_ID},
+                    :{DB.ARTISTS_ALBUMS.ALBUM_ID})"""
 
                     self.cursor.execute(query, artist_album)
 
@@ -650,12 +657,12 @@ class DB:
         else:
             for album_track in albums_tracks_values:
                 try:
-                    query = f"""INSERT OR REPLACE INTO {DB.TRACKS_OF_ALBUMS.__name__} 
-                    ({DB.TRACKS_OF_ALBUMS.ALBUM_ID},
-                    {DB.TRACKS_OF_ALBUMS.TRACK_ID})
+                    query = f"""INSERT OR REPLACE INTO {DB.ALBUMS_TRACKS.TBL_NAME} 
+                    ({DB.ALBUMS_TRACKS.ALBUM_ID},
+                    {DB.ALBUMS_TRACKS.TRACK_ID})
                     
-                    VALUES (:{DB.TRACKS_OF_ALBUMS.ALBUM_ID},
-                    :{DB.TRACKS_OF_ALBUMS.TRACK_ID})"""
+                    VALUES (:{DB.ALBUMS_TRACKS.ALBUM_ID},
+                    :{DB.ALBUMS_TRACKS.TRACK_ID})"""
 
                     self.cursor.execute(query, album_track)
 
