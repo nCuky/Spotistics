@@ -23,41 +23,42 @@ class DB:
         TBL_NAME = 'tracks'
 
         ID = 'track_id'
+        NAME = 'name'
+        DURATION_MS = 'duration_ms'
+        DISC_NUMBER = 'disc_number'
+        TRACK_NUMBER = 'track_number'
+        EXPLICIT = 'explicit'
+        POPULARITY = 'popularity'
+        IS_LOCAL = 'is_local'
+        IS_PLAYABLE = 'is_playable'
+        ISRC = 'isrc'
         HREF = 'href'
         URI = 'uri'
-        DISC_NUMBER = 'disc_number'
-        DURATION_MS = 'duration_ms'
-        EXPLICIT = 'explicit'
-        NAME = 'name'
         PREVIEW_URL = 'preview_url'
-        TRACK_NUMBER = 'track_number'
-        IS_LOCAL = 'is_local'
-        POPULARITY = 'popularity'
-        IS_PLAYABLE = 'is_playable'
 
     @dataclass(frozen = True)
     class ALBUMS:
         TBL_NAME = 'albums'
 
         ID = 'album_id'
-        HREF = 'href'
-        URI = 'uri'
         NAME = 'name'
-        ALBUM_TYPE = 'album_type'
         TOTAL_TRACKS = 'total_tracks'
         RELEASE_DATE = 'release_date'
         RELEASE_DATE_PRECISION = 'release_date_precision'
+        ALBUM_TYPE = 'album_type'
+        HREF = 'href'
+        URI = 'uri'
 
     @dataclass(frozen = True)
     class ARTISTS:
         TBL_NAME = 'artists'
 
         ID = 'artist_id'
-        HREF = 'href'
-        URI = 'uri'
         NAME = 'name'
         TOTAL_FOLLOWERS = 'total_followers'
         POPULARITY = 'popularity'
+        HREF = 'href'
+        URI = 'uri'
 
     @dataclass(frozen = True)
     class ARTISTS_ALBUMS:
@@ -97,7 +98,7 @@ class DB:
     class TRACKS_LISTEN_HISTORY:
         TBL_NAME = 'tracks_listen_history'
 
-        TIMESTAMP = 'timestamp'
+        TIMESTAMP = 'time_stamp'
         USERNAME = 'username'
         TRACK_ID = 'track_id'
         PLATFORM = 'platform'
@@ -301,10 +302,20 @@ class DB:
         """
         Initializes the DB Manager for working with the DB.
         """
-        # Connect to DB
         self._db_filename_ = "my_spotify_data.db"
+        self._db_schema_filename = "my_spotify_data_db_scheme.sql"
+
+        # Connect to DB
         self.connection = sqlite3.connect(self._db_filename_)
         self.cursor = self.connection.cursor()
+
+        init_db_script = open(self._db_schema_filename, "rt").read()
+        try:
+            self.cursor.executescript(init_db_script)
+
+        except sqlite3.OperationalError as e:
+            DB.eprint(f"sqlite3.OperationalError: {e}")
+            log.write(message = log.DB_SCHEMA_ERROR)
 
     def commit(self) -> None:
         """Commits all changes to the DB."""
@@ -326,7 +337,7 @@ class DB:
         Insert multiple Tracks' values to the **Tracks** DB-table.
         Does not commit.
 
-        :param tracks_values: List of Dictionaries containing the desired Tracks' values to insert.
+        :param tracks_values: List of Tuples containing the desired Tracks' values to insert.
         :return: None.
         """
         if tracks_values is None:
@@ -334,32 +345,36 @@ class DB:
 
         else:
             try:
-                query = f"""INSERT OR REPLACE INTO {DB.TRACKS.TBL_NAME}
-                ({DB.TRACKS.ID},
+                query = f"""INSERT OR REPLACE INTO {DB.TRACKS.TBL_NAME} (
+                {DB.TRACKS.ID},
+                {DB.TRACKS.NAME},                
+                {DB.TRACKS.DURATION_MS},
+                {DB.TRACKS.DISC_NUMBER},
+                {DB.TRACKS.TRACK_NUMBER},
+                {DB.TRACKS.EXPLICIT},
+                {DB.TRACKS.POPULARITY},
+                {DB.TRACKS.IS_LOCAL},
+                {DB.TRACKS.IS_PLAYABLE},
+                {DB.TRACKS.ISRC},
                 {DB.TRACKS.HREF},
                 {DB.TRACKS.URI},
-                {DB.TRACKS.DISC_NUMBER},
-                {DB.TRACKS.DURATION_MS},
-                {DB.TRACKS.EXPLICIT},
-                {DB.TRACKS.NAME},
-                {DB.TRACKS.PREVIEW_URL},
-                {DB.TRACKS.TRACK_NUMBER},
-                {DB.TRACKS.IS_LOCAL},
-                {DB.TRACKS.POPULARITY},
-                {DB.TRACKS.IS_PLAYABLE})
+                {DB.TRACKS.PREVIEW_URL}
+                )
 
-                VALUES (:{DB.TRACKS.ID},
-                :{DB.TRACKS.HREF},
-                :{DB.TRACKS.URI},
-                :{DB.TRACKS.DISC_NUMBER},
+                VALUES (
+                :{DB.TRACKS.ID},
+                :{DB.TRACKS.NAME},          
                 :{DB.TRACKS.DURATION_MS},
-                :{DB.TRACKS.EXPLICIT},
-                :{DB.TRACKS.NAME},
-                :{DB.TRACKS.PREVIEW_URL},
+                :{DB.TRACKS.DISC_NUMBER},
                 :{DB.TRACKS.TRACK_NUMBER},
-                :{DB.TRACKS.IS_LOCAL},
+                :{DB.TRACKS.EXPLICIT},
                 :{DB.TRACKS.POPULARITY},
-                :{DB.TRACKS.IS_PLAYABLE});"""
+                :{DB.TRACKS.IS_LOCAL},
+                :{DB.TRACKS.IS_PLAYABLE},
+                :{DB.TRACKS.ISRC},
+                :{DB.TRACKS.HREF},
+                :{DB.TRACKS.URI}
+                );"""
 
                 self.cursor.executemany(query, tracks_values)
 
@@ -384,10 +399,10 @@ class DB:
             log.write("WARNING: " + log.EMPTY_VALUES.format('Listen History'))
 
         else:
-            for listened_track in listen_history_df.itertuples():
-                track_str = (listened_track.pk_timestamp,
-                             listened_track.pk_username,
-                             listened_track.pk_track_id,
+            for listened_track in listen_history_df.itertuples(index = False):
+                track_str = (listened_track.time_stamp,
+                             listened_track.username,
+                             listened_track.track_id,
                              listened_track.platform,
                              listened_track.ms_played,
                              listened_track.conn_country,
@@ -460,8 +475,6 @@ class DB:
         """Insert full track record for all tables. Don't commit."""
         self.insert_track(DB.get_track_for_insert(track))
         self.insert_album(DB.get_album_for_insert(track))
-        # self.insert_artists_album(DB.get_artists_album_for_insert(track))
-        # self.insert_artists_track(DB.get_artists_track_for_insert(track))
         self.insert_linked_from(DB.get_linked_from_for_insert(track))
 
     def insert_track(self, track_values: dict) -> None:
@@ -606,15 +619,6 @@ class DB:
                 :{DB.TRACKS_LINKED_FROM.RELINKED_ID})"""
 
                 self.cursor.execute(query, linked_track_values)
-
-                # elif len(linked_track_values) == 4:
-                #     self.cursor.execute(f"""INSERT OR REPLACE INTO {DB.TRACKS_LINKED_FROM.TBL_NAME}
-                #     ({DB.TRACKS_LINKED_FROM.FROM_ID},
-                #     {DB.TRACKS_LINKED_FROM.RELINKED_ID})
-                #     VALUES (?, ?)""", __parameters = linked_track_values)
-
-                # else:
-                #     DB.eprint("WARNING: Wrong number of values to insert. Should be either 2 or 4. Skipping")
 
             except sqlite3.IntegrityError as e:
                 DB.eprint(log.CANNOT_INSERT.format(str(linked_track_values)))

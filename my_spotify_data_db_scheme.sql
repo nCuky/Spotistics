@@ -3,6 +3,8 @@
  * 
  * This script creates all needed tables for storing my Spotify Data 
  * in a normalized and convenient way.
+ * It also defines additional indexes, views, triggers, etc., required
+ * for the DB.
  * 
  * Notes:
  * -	Due to an early version bug, SQLite does not enforce NOT NULL on 
@@ -22,37 +24,40 @@
 
 CREATE TABLE IF NOT EXISTS tracks (
 	track_id TEXT PRIMARY KEY NOT NULL,
+	name TEXT,
+	duration_ms INTEGER,
+	disc_number INTEGER,
+	track_number INTEGER,
+	explicit BOOLEAN,
+	popularity INTEGER,
+	is_local BOOLEAN,
+	is_playable BOOLEAN,
+	isrc TEXT,
 	href TEXT,
 	uri TEXT,
-	disc_number INTEGER,
-	duration_ms INTEGER,
-	explicit BOOLEAN,
-	name TEXT,
 	preview_url TEXT,
-	track_number INTEGER,
-	is_local BOOLEAN,
-	popularity INTEGER,
-	is_playable BOOLEAN
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME 
 );
 
 CREATE TABLE IF NOT EXISTS albums (
 	album_id TEXT PRIMARY KEY NOT NULL,
-	href TEXT,
-	uri TEXT,
 	name TEXT,
-	album_type TEXT,
 	total_tracks INTEGER,
 	release_date TEXT,
-	release_date_precision TEXT
+	release_date_precision TEXT,
+	album_type TEXT,
+	href TEXT,
+	uri TEXT
 );
 
 CREATE TABLE IF NOT EXISTS artists (
 	artist_id TEXT PRIMARY KEY NOT NULL,
-	href TEXT,
-	uri TEXT,
 	name TEXT,
 	total_followers INTEGER,
-	popularity INTEGER
+	popularity INTEGER,
+	href TEXT,
+	uri TEXT
 );
 
 CREATE TABLE IF NOT EXISTS artists_albums (
@@ -110,7 +115,7 @@ CREATE TABLE IF NOT EXISTS tracks_listen_history (
 );
 
 
--- Indexes definition
+-- Indexes definition --
 
 CREATE INDEX IF NOT EXISTS idx_tracks_name
 	ON tracks (name);
@@ -134,7 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_tracks_listen_history_reason
 	ON tracks_listen_history (reason_start, reason_end);
 	
 
--- Views definition
+-- Views definition --
 
 CREATE VIEW IF NOT EXISTS v_tracks_listen_history 
 	AS SELECT time_stamp,
@@ -154,4 +159,14 @@ CREATE VIEW IF NOT EXISTS v_tracks_listen_history
 	FROM tracks_listen_history
 	INNER JOIN linked_tracks ON linked_tracks.linked_from_id = tracks_listen_history.track_id;
 
+
+-- Triggers definition --
+
+CREATE TRIGGER IF NOT EXISTS trg_update_tracks_updated_at
+	AFTER UPDATE ON tracks
+	BEGIN 
+		UPDATE tracks 
+			SET updated_at = (datetime(CURRENT_TIMESTAMP, 'localtime'))
+			WHERE track_id = NEW.track_id;
+	END;
 

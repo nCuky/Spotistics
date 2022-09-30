@@ -17,7 +17,8 @@
 * Artist specialist: total listen time to an artist, as percentage of the total time of their discography's tracks.
 * Forgotten tracks: listened tracks with the longest time gap between listens
 * Unpopular tracks: all listens to the least-popular tracks
-
+* Which track was listened the most times during the shortest amount of time
+* Top track per month
 
 
 

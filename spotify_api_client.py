@@ -253,13 +253,20 @@ class SpotifyAPIClient:
 
     def get_full_tracks(self, tracks: pd.Series) -> tk.model.ModelList[tk.model.FullTrack]:
         """
-        For each track in the given dataframe, fetches its :class:`tk.model.FullTrack` object from the API.
+        For each track in the given series, fetches its :class:`tk.model.FullTrack` object from the API.
 
-        :param tracks: Series of all the required tracks' ID's.
-        :return: Tekore ModelList of FullTracks, for the given tracks series.
+        Parameters:
+            tracks: All the required tracks' ID's.
+
+        Returns:
+            Tekore ModelList of FullTracks, for the given tracks series.
+
+        Raises:
+            tk.ServiceUnavailable: if Spotify's API service is unavailable.
         """
         unique_tracks = tracks.dropna().unique()
         unique_tracks_list = unique_tracks.tolist()
+        full_tracks = None
 
         with self.client.token_as(self.user_token):
             log.write(message = log.FETCHING_TRACKS_ATTRS.format(unique_tracks.size))
@@ -272,11 +279,15 @@ class SpotifyAPIClient:
                 log.write(message = log.TRACKS_ATTRS_FETCHED.format(len(full_tracks)))
 
             except tk.ServiceUnavailable as ex:
-                log.write(message = log.API_SERVICE_UNAVAILABLE.format(ex))
+                message = log.API_SERVICE_UNAVAILABLE.format(ex)
+                log.write(message = message)
+
+                raise tk.ServiceUnavailable(message = message)
 
         return full_tracks
 
-    def get_track_known_id_map(self, full_tracks: tk.model.ModelList[tk.model.FullTrack],
+    def get_track_known_id_map(self,
+                               full_tracks: tk.model.ModelList[tk.model.FullTrack],
                                tracks: pd.Series = None) -> dict:
         """
         For each given Track, determine the single TrackID that is known to be valid and available.
@@ -284,21 +295,32 @@ class SpotifyAPIClient:
 
         * if the track **has** a ``linked_from`` object, the LinkedFrom ID is mapped to the given ID.
         * if the track **has no** ``linked_from`` object, the given id is mapped to itself.
-        If a ``full_tracks`` (:class:`tk.model.ModelList`) object is given, the method uses it without calling the API.
+        If a ``full_tracks`` object is given, the method uses it without calling the API.
         Otherwise, the method calls the API with the given ``tracks`` Series object.
 
-        :param full_tracks: Tekore ModelList of FullTracks, from which to take the TrackKnownID values.
-        :param tracks: Series of TrackID values, to call the API with.
-        :return: Dictionary mapping each given ID to its 'known' ID (can be the same ID or different).
+        Parameters:
+            full_tracks: Tekore ModelList of FullTracks, from which to take the TrackKnownID values.
+            tracks: Series of TrackID values, to call the API with.
+
+        Returns:
+            Dictionary mapping each given ID to its 'known' ID (can be the same ID or different).
         """
-        full_tracks = self.get_full_tracks(tracks) if full_tracks is None else full_tracks
-        tracks_known_ids_map = {}
+        try:
+            _full_tracks = full_tracks if full_tracks is not None else self.get_full_tracks(tracks)
+            tracks_known_ids_map = {}
 
-        for track in full_tracks:
-            if track.linked_from is not None:
-                tracks_known_ids_map[track.linked_from.id] = track.id
+            for track in _full_tracks:
+                try:
+                    if (track is not None) and getattr(track, 'linked_from') is not None:
+                        tracks_known_ids_map[track.linked_from.id] = track.id
 
-            else:
-                tracks_known_ids_map[track.id] = track.id
+                    else:
+                        tracks_known_ids_map[track.id] = track.id
 
-        return tracks_known_ids_map
+                except AttributeError:
+                    tracks_known_ids_map[track.id] = track.id
+
+            return tracks_known_ids_map
+
+        except tk.ServiceUnavailable as ex:
+            return
