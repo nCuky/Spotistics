@@ -11,6 +11,8 @@ API_SERVICE_UNAVAILABLE = 'Spotify API Service is unavailable. Original error: {
 EMPTY_VALUES = 'No {0} values were given, so no DB-action was performed.'
 CANNOT_INSERT = 'ERROR: Could not insert the following: {0}'
 DB_SCHEMA_ERROR = 'ERROR in DB Schema script.'
+DB_INTEGRITY_ERROR = 'sqlite3.IntegrityError: {0}'
+DB_OPERATIONAL_ERROR = 'sqlite3.OperationalError: {0}'
 
 
 def write(message: str) -> None:

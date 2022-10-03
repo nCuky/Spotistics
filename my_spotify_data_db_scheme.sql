@@ -48,7 +48,9 @@ CREATE TABLE IF NOT EXISTS albums (
 	release_date_precision TEXT,
 	album_type TEXT,
 	href TEXT,
-	uri TEXT
+	uri TEXT,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS artists (
@@ -57,7 +59,9 @@ CREATE TABLE IF NOT EXISTS artists (
 	total_followers INTEGER,
 	popularity INTEGER,
 	href TEXT,
-	uri TEXT
+	uri TEXT,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS artists_albums (
@@ -100,16 +104,18 @@ CREATE TABLE IF NOT EXISTS tracks_listen_history (
 	time_stamp TEXT NOT NULL,
 	username TEXT NOT NULL,
 	track_id TEXT NOT NULL,
-	platform TEXT,
 	ms_played INTEGER,
-	conn_country TEXT,
-	uri TEXT,
 	reason_start TEXT,
 	reason_end TEXT,
+	skipped TEXT,
+	platform TEXT,
+	conn_country TEXT,
+	uri TEXT,
 	shuffle BOOLEAN,
 	offline BOOLEAN,
 	incognito_mode BOOLEAN,
-	skipped TEXT,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME,
 	PRIMARY KEY (time_stamp, username, track_id)
 	FOREIGN KEY (track_id) REFERENCES linked_tracks(linked_from_id)
 );
