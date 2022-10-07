@@ -1,7 +1,7 @@
 # "Spotistics": Spotify Listening History Analysis & Statistics
 
 [Spotify](spotify.com) is a very popular music streaming service, with over 400M monthly active users and 80M tracks.
-I have been listening to music in Spotify since 2017. Throughout the years, I listened to more than 60,000 songs.
+I (Nadav) have been listening to music in Spotify since 2017. Throughout the years, I listened to more than 60,000 songs.
 I was curious to learn about my musical journey "from above", and try to define my musical identity, based on my
 listening history.
 
@@ -83,7 +83,9 @@ and they give us an interesting musical analysis of a given track:
   For example, _"Stayin' Alive"_ by the Bee Gees has a tempo of approximately 103 BPM. 
 
 
-## Author
-🧔🏻 **Nadav Curiel**
+## Authors
+🧔 **Nadav Curiel**
 - Github: [@nCuky](https://github.com/nCuky)
-- 
+
+🧔🏻 **Erez Shomron**
+- Github: 

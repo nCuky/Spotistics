@@ -27,7 +27,7 @@
  Maybe build a new method specifically for replacing tracks' "Single" album ID with their "Real Album" ID.
 
 
-## Done:
+### Done:
 - [x] Column function: from all listen data, for every combination of Artist+Track+Album, find how many instances exist.
 - [x] make sure the API returns ALL items and not only the first 100 - send 'offset' parameter to the API function calls
 rewrite all functions so that they use this new logic.
