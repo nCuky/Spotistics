@@ -1,5 +1,3 @@
-import names
-import spotify_data_set as spdt
 # from pyspark.sql import SparkSession
 # from app_gui import AppGUI as AppGUI
 from logic import Logic as lg
@@ -8,42 +6,31 @@ from logic import Logic as lg
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import seaborn as sns
-from names import Spdb as spdb
 from names import Spdt as spdt
 
+
+# --- Initializing the application, fetching data and displaying graphs ---
 my_lg = lg()
-
-# features_data = my_lg.get_artist_audio_features_data(name = "Frank Zappa")
-# my_lg.collect_all_tracks_to_file()
-
 my_lg.collect_data_and_save()
-tracks_count = my_lg.count_unique_tracks()
-tracks_count.sort_values(by = spdt.TIMES_LISTENED, ascending = False, inplace = True)
+
+tracks_count = my_lg.count_unique_tracks().sort_values(by = spdt.TIMES_LISTENED, ascending = False)
 
 # region Plotting
-
 
 total_listens_by_artist = tracks_count.groupby(by = spdt.ALBUM_ARTIST_NAME, as_index = True).agg(
     total_listened = (spdt.TIMES_LISTENED, 'sum')).sort_values('total_listened', ascending = False).head(50)
 
-sns.set_style('darkgrid')
-
 plt_listens_by_artist = sns.barplot(x = 'total_listened',
                                     y = total_listens_by_artist.index,
                                     data = total_listens_by_artist)
-
 plt_listens_by_artist.set(xlabel = "Total times listened",
                           ylabel = "Artist",
                           title = "My top 50 artists by number of listens")
-
 plt_listens_by_artist.xaxis.set_major_locator(ticker.MultipleLocator(500))
-
-plt.tight_layout()
-
-# plt_listens_by_artist.set_xticklabels(plt_listens_by_artist.get_xticklabels(), rotation = 45,
-#                                       horizontalalignment = 'right')
 plt_listens_by_artist.grid(b = True, axis = 'x')
 
+sns.set_style('darkgrid')
+plt.tight_layout()
 plt.show()
 
 # endregion Plotting

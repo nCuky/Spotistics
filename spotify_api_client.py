@@ -12,9 +12,9 @@ class AttrNames:
 
 
 class SpotifyAPIClient:
-    '''
+    """
     Spotify API Client logic. uses "Tekore" module to call Spotify API.
-    '''
+    """
     MAX_TRACKS_FOR_FEATURES = 100
     MAX_TRACKS_FOR_PLAYLIST_ITEMS = 100
     MAX_TRACKS_BATCH_SIZE_FOR_RECENTLY_PLAYED = 50
@@ -23,8 +23,8 @@ class SpotifyAPIClient:
     REDIRECT_URI = "http://localhost:8888/spotify/callback"
 
     def __init__(self, token):
-        self.app_token: tk.RefreshingToken(token = None, credentials = None) = None
-        self.user_token: tk.RefreshingToken() = None
+        self.app_token: tk.RefreshingToken = None
+        self.user_token: tk.RefreshingToken = None
         self.client = tk.Spotify(token = self.get_app_token(token),
                                  max_limits_on = True,
                                  chunked_on = True)
@@ -53,7 +53,8 @@ class SpotifyAPIClient:
             self.user_token = tk.prompt_for_user_token(client_id = cl_id,
                                                        client_secret = cl_secret,
                                                        redirect_uri = redirect_uri,
-                                                       scope = tk.scope.user_read_private)
+                                                       scope = [tk.scope.user_read_private,
+                                                                tk.scope.user_read_recently_played])
 
     def connect(self) -> None:
         self.client = tk.Spotify(token = self.get_app_token(),
@@ -75,6 +76,31 @@ class SpotifyAPIClient:
                 raise ValueError("Client is not connected to Spotify API")
 
     # endregion
+
+    def user_get_all_recently_played(self) -> None | list[tk.model.PlayHistory]:
+        with self.client.token_as(self.user_token):
+            log.write(message = log.FETCHING_RECENTLY_PLAYED)
+
+            recently_played_paging = None
+
+            try:
+                # Calling the API to get the current user's Recently Played tracks:
+                recently_played_paging = self.client.playback_recently_played(limit = 50)
+                all_recently_played = recently_played_paging.items
+
+                while recently_played_paging.next is not None:
+                    recently_played_paging = self.client.next(recently_played_paging)
+                    all_recently_played.extend(recently_played_paging.items)
+
+                log.write(message = log.RECENTLY_PLAYED_FETCHED)
+
+            except tk.ServiceUnavailable as ex:
+                message = log.API_SERVICE_UNAVAILABLE.format(ex)
+                log.write(message = message)
+
+                raise tk.ServiceUnavailable(message = message)
+
+        return all_recently_played
 
     def get_all_user_playlists(self, limit = 50):
         self.validate_connection()

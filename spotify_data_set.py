@@ -74,14 +74,21 @@ class SpotifyDataSet:
     def prepare_track_listen_history(listen_history_df: pd.DataFrame) -> pd.DataFrame:
         """
         Cleans up, sorts and prepares a Tracks-only Listen History DataFrame for working upon.
-        Sorts the records by timestamp and ms_played (both ascending);
-        Adds a TrackID column (extracted from the SpotifyTrackURI), renames some columns to friendlier names,
+        **Sorts** the records by timestamp and ms_played (both ascending);
+
+        Adds a **TrackID column** (extracted from the SpotifyTrackURI), renames some columns to friendlier names,
         and removes other unwanted columns;
-        Removes podcast-episodes listens, listens without any TrackID, and duplicated listens of the same track in
-        the same timestamp;
+
+        Removes **podcast-episodes** listens, removes listens with no TrackID, and removes **duplicated listens** of
+        the same track in the same timestamp;
+
         Takes care of other edge-cases.
-        :param listen_history_df: Source DataFrame with the Listen History.
-        :return: DataFrame with the prepared Tracks Listen History.
+
+        Parameters:
+            listen_history_df: Source DataFrame with the Listen History.
+
+        Returns:
+            DataFrame with the prepared Tracks Listen History.
         """
         prepped_df = listen_history_df.copy()
 
@@ -128,9 +135,13 @@ class SpotifyDataSet:
     @staticmethod
     def add_track_id_column(updated_df: pd.DataFrame) -> None:
         """
-        Adds a 'track_id' column based on the values of 'spotify_track_uri' column.
-        :param updated_df: DataFrame with tracks listen history.
-        :return: Updated dataframe with additional column 'track_id'.
+        Adds a 'track_id' column based on the values of `spotify_track_uri` column.
+
+        Parameters:
+            updated_df: DataFrame with tracks listen history.
+
+        Returns:
+            An updated DataFrame with additional column 'track_id'.
         """
         col_idx_to_insert = updated_df.columns.get_loc(spdtnm.TRACK_URI) + 1
 
@@ -145,8 +156,16 @@ class SpotifyDataSet:
     @staticmethod
     def prepare_audio_analysis_data(updated_df: pd.DataFrame) -> None:
         """
-        Prepares the data for musical analysis, e.g. recodes key and mode fields to human-readable letters.
-        :return: The prepared Spotify data.
+        Prepares a given **Audio Features** DataFrame for human readability:
+        Recodes key and mode fields to accepted musical terminology letters.
+
+        This method **changes the given DataFrame** (Inplace = True).
+
+        Parameters:
+            updated_df: DataFrame to prepare.
+
+        Returns:
+            None (The given DataFrame is changed inplace).
         """
         modes_replacement_dict = {'from': [0, 1],
                                   'to'  : ['m', 'M']}
@@ -190,6 +209,15 @@ class SpotifyDataSet:
     # region Instance Logic
 
     def get_tracks_listen_data(self) -> pd.DataFrame:
+        """
+        Returns the currently worked upon Listen History DataFrame.
+
+        A "singleton getter", when called for the first time it collects the data, prepares it and saves it
+        as an instance attribute. Afterwards, it returns the existing attribute.
+
+        Returns:
+            Listen History DataFrame.
+        """
         if self._all_tracks_df is None:
             self._all_tracks_df = SpotifyDataSet.collect_all_listen_history(db_handler = self._db_handler,
                                                                             folder_path = self._data_dir)
@@ -200,7 +228,9 @@ class SpotifyDataSet:
     def get_distinct_tracks(self) -> pd.DataFrame:
         """
         Return distinct tracks, based on the KnownTrackID column (must make sure beforehand that it exists!).
-        :return: DataFrame, containing the unique instance of each track.
+
+        Returns:
+            DataFrame, containing the unique instance of each track.
         """
 
         unique_tracks = self._all_tracks_df.drop_duplicates(
@@ -214,6 +244,15 @@ class SpotifyDataSet:
         return unique_tracks
 
     def add_track_known_id(self, known_tracks_ids_map: dict) -> None:
+        """
+        Adds a column with the Known Track ID for each track in the listen history.
+
+        Parameters:
+            known_tracks_ids_map: Dictionary mapping each TrackID from the listen history to its KnownID.
+
+        Returns:
+            None.
+        """
         col_idx_to_insert = self._all_tracks_df.columns.get_loc(spdtnm.TRACK_ID) + 1
 
         # Making sure that any track_id values that are missing in the mapping get mapped to themselves:

@@ -138,37 +138,28 @@ class DB:
     #
     #     return values_out
 
-    # @staticmethod
-    # @deprecated(details = """Please use ``get_tracks_of_albums_for_insert``.""")
-    # def get_artists_track_for_insert(track: dict | tk.model.Track | tk.model.FullTrack | None = None) -> list | None:
-    #     """Turn a track into a tuple list insertable into the artists_track table."""
-    #     match track:
-    #         case dict() as track:
-    #             artists = track['artists']
-    #             values_out = [None] * len(artists)
-    #
-    #             for i, artist in enumerate(artists):
-    #                 values_out[i] = (artist['id'],
-    #                                  artist['href'],
-    #                                  artist['uri'],
-    #                                  artist['name'],
-    #                                  track['id'])
-    #
-    #         case tk.model.Track() as track | tk.model.FullTrack() as track:
-    #             artists = track.artists
-    #             values_out = [None] * len(artists)
-    #
-    #             for i, artist in enumerate(artists):
-    #                 values_out[i] = (artist.id,
-    #                                  artist.href,
-    #                                  artist.uri,
-    #                                  artist.name,
-    #                                  track.id)
-    #
-    #         case _:
-    #             values_out = None
-    #
-    #     return values_out
+    @staticmethod
+    def get_album_track_for_insert(track: tk.model.FullTrack = None) -> dict | None:
+        """
+        Returns an Album<->Track binding that can be inserted into the **AlbumsTracks** DB-table.
+
+        Parameters:
+            track: A FullTrack object with its Album.
+
+        Returns:
+            Dictionary with the Album<->Track binding.
+        """
+        linked = track.linked_from
+
+        if linked is None:
+            values_out = {spdbnm.ALBUMS_TRACKS.ALBUM_ID: track.album.id,
+                          spdbnm.ALBUMS_TRACKS.TRACK_ID: track.id}
+
+        else:
+            values_out = {spdbnm.ALBUMS_TRACKS.ALBUM_ID: track.album.id,
+                          spdbnm.ALBUMS_TRACKS.TRACK_ID: linked.id}
+
+        return values_out
 
     @staticmethod
     def get_listen_history_df_for_insert(listen_history_df: pd.DataFrame) -> pd.DataFrame:
@@ -181,11 +172,20 @@ class DB:
         Returns:
             DataFrame ready for insertion.
         """
-        df_to_insert = listen_history_df[[spdtnm.TIMESTAMP, spdtnm.USERNAME, spdtnm.TRACK_ID, spdtnm.PLATFORM,
-                                          spdtnm.MS_PLAYED, spdtnm.CONN_COUNTRY, spdtnm.TRACK_URI,
-                                          spdtnm.REASON_START, spdtnm.REASON_END, spdtnm.SHUFFLE, spdtnm.OFFLINE,
-                                          spdtnm.INCOGNITO, spdtnm.SKIPPED]].fillna(value = {spdtnm.SKIPPED: ''},
-                                                                                    inplace = False)
+        df_to_insert = listen_history_df[[spdtnm.TIMESTAMP,
+                                          spdtnm.USERNAME,
+                                          spdtnm.TRACK_ID,
+                                          spdtnm.MS_PLAYED,
+                                          spdtnm.REASON_START,
+                                          spdtnm.REASON_END,
+                                          spdtnm.SKIPPED,
+                                          spdtnm.PLATFORM,
+                                          spdtnm.CONN_COUNTRY,
+                                          spdtnm.TRACK_URI,
+                                          spdtnm.SHUFFLE,
+                                          spdtnm.OFFLINE,
+                                          spdtnm.INCOGNITO]].fillna(value = {spdtnm.SKIPPED: ''},
+                                                                    inplace = False)
 
         df_to_insert = df_to_insert.rename(columns = {spdtnm.TIMESTAMP: spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP,
                                                       spdtnm.USERNAME : spdbnm.TRACKS_LISTEN_HISTORY.USERNAME,

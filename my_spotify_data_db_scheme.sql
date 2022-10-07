@@ -148,22 +148,29 @@ CREATE INDEX IF NOT EXISTS idx_tracks_listen_history_reason
 -- Views definition --
 
 CREATE VIEW IF NOT EXISTS v_tracks_listen_history 
-	AS SELECT time_stamp,
-			username,
-			track_id AS track_listened_id,
+	AS SELECT tracks_listen_history.time_stamp,
+			tracks_listen_history.username,
+			tracks_listen_history.track_id AS track_listened_id,
 			linked_tracks.track_known_id AS track_known_id,
-			platform,
-			ms_played,
-			conn_country,
-			uri,
-			reason_start,
-			reason_end,
-			shuffle,
-			offline,
-			incognito_mode,
-			skipped
+			tracks.name as track_name,
+			artists.name as artist_name,
+			tracks_listen_history.ms_played,
+			tracks_listen_history.reason_start,
+			tracks_listen_history.reason_end,
+			tracks_listen_history.skipped,
+			tracks_listen_history.platform,
+			tracks_listen_history.conn_country,
+			--tracks_listen_history.uri,
+			tracks_listen_history.shuffle,
+			tracks_listen_history.offline,
+			tracks_listen_history.incognito_mode
 	FROM tracks_listen_history
-	INNER JOIN linked_tracks ON linked_tracks.linked_from_id = tracks_listen_history.track_id;
+	INNER JOIN linked_tracks ON linked_tracks.linked_from_id = tracks_listen_history.track_id
+	INNER JOIN tracks ON tracks.track_id = linked_tracks.track_known_id -- For track name
+	INNER JOIN albums_tracks ON albums_tracks.track_id = linked_tracks.linked_from_id  
+	INNER JOIN artists_albums ON artists_albums.album_id = albums_tracks.album_id 
+		--( SELECT FIRST artist_id FROM artists_albums WHERE artists_albums.album_id = albums_tracks.album_id )
+	INNER JOIN artists ON artists.artist_id = artists_albums.artist_id; 
 
 
 -- Triggers definition --
