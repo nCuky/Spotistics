@@ -313,7 +313,7 @@ class SpotifyAPIClient:
 
         return full_tracks
 
-    def get_full_albums(self, albums: pd.Series | set) -> tk.model.ModelList[tk.model.FullAlbum]:
+    def get_full_albums(self, albums: pd.Series | set | list) -> tk.model.ModelList[tk.model.FullAlbum]:
         """
         For each Album ID in the given collection, fetches its :class:`tk.model.FullAlbum` object from the API.
 
@@ -337,6 +337,9 @@ class SpotifyAPIClient:
             case set() as albums:
                 unique_albums_list = list(albums)
 
+            case list() as albums:
+                unique_albums_list = albums
+
         with self.client.token_as(self.user_token):
             log.write(message = log.FETCHING_ALBUMS_ATTRS.format(len(unique_albums_list)))
 
@@ -354,6 +357,52 @@ class SpotifyAPIClient:
                 raise tk.ServiceUnavailable(message = message)
 
         return full_albums
+
+    def get_artists_albums(self,
+                           artists_ids: pd.Series | set | list) -> dict:
+        """
+        For each Artist ID in the given collection, fetches all of their objects from the
+        API.
+
+        Parameters:
+            artists_ids: ID's of all the required artists.
+
+        Returns:
+            Dictionary, containing one entry for each artist, with a ModelList of all that artist's albums.
+
+        Raises:
+            tk.ServiceUnavailable: if Spotify's API service is unavailable.
+        """
+        unique_artists_list = []
+        all_artists_albums = {}
+
+        match artists_ids:
+            case pd.Series() as artists_ids:
+                unique_artists_list = artists_ids.dropna().unique().tolist()
+
+            case set() as artists_ids:
+                unique_artists_list = list(artists_ids)
+
+            case list() as artists_ids:
+                unique_artists_list = artists_ids
+
+        with self.client.token_as(self.user_token):
+            log.write(message = log.FETCHING_ARTISTS_ALBUMS_ATTRS.format(len(unique_artists_list)))
+
+            try:
+                # Calling the API to get all albums for each given Artist ID:
+                for artist in unique_artists_list:
+                    all_artists_albums[artist] = self.client.artist_albums(artist_id = artist)
+
+                log.write(message = log.ARTISTS_ALBUMS_ATTRS_FETCHED.format(len(unique_artists_list)))
+
+            except tk.ServiceUnavailable as ex:
+                message = log.API_SERVICE_UNAVAILABLE.format(ex)
+                log.write(message = message)
+
+                raise tk.ServiceUnavailable(message = message)
+
+        return all_artists_albums
 
     def get_track_known_id_map(self,
                                full_tracks: tk.model.ModelList[tk.model.FullTrack],

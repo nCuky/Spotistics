@@ -12,6 +12,8 @@ FETCHING_TRACKS_ATTRS = "Fetching FullTrack attributes for {0} tracks (might tak
 TRACKS_ATTRS_FETCHED = "FullTrack attributes were successfully fetched for {0} tracks."
 FETCHING_ALBUMS_ATTRS = "Fetching FullAlbum attributes for {0} albums (might take a while)..."
 ALBUMS_ATTRS_FETCHED = "FullAlbum attributes were successfully fetched for {0} albums."
+FETCHING_ARTISTS_ALBUMS_ATTRS = "Fetching all albums for {0} artists (might take a while)..."
+ARTISTS_ALBUMS_ATTRS_FETCHED = "All albums were successfully fetched for {0} artists."
 FETCHING_RECENTLY_PLAYED = "Fetching the current user's Recently Played Tracks..."
 RECENTLY_PLAYED_FETCHED = "The current user's Recently Played Tracks were successfully fetched."
 

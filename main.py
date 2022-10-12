@@ -9,7 +9,7 @@ import seaborn as sns
 from names import Spdt as spdt
 
 # Initializing the application:
-my_lg = lg()
+my_lg = lg(listen_history_from = 'json')
 my_lg.collect_data_and_save()
 
 tracks_count = my_lg.count_unique_tracks().sort_values(by = spdt.TIMES_LISTENED, ascending = False)

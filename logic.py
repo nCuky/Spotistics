@@ -83,13 +83,21 @@ class Logic:
 
     # endregion Utility Methods
 
-    def __init__(self):
+    def __init__(self, listen_history_from: str = 'db'):
         """
         Initializes an instance of the app's main Logic.
+
+        Parameters:
+            listen_history_from: Where to fetch the listen history from.
+
+                Possible values:
+                'db' = fetch from an existing DB file.
+                'json' = fetch from JSON files downloaded from Spotify.
         """
         self.my_spapi = spapi(token = Logic.get_token())
         self.my_db = db.DB()
-        self.my_spdt = spdt.SpotifyDataSet(db_handler = self.my_db)
+        use_db = self.my_db if listen_history_from == 'db' else None
+        self.my_spdt = spdt.SpotifyDataSet(db_handler = use_db)
 
     def get_artist_audio_features_data(self, name: str):
         artist_id = self.my_spapi.find_artist(name).id
@@ -203,6 +211,7 @@ class Logic:
 
         # linked_from_tracks_ids = []
         all_albums_ids = set()
+        all_artists_ids = set()
 
         for full_track in full_tracks:
             # track_considered_dead = False
@@ -273,6 +282,7 @@ class Logic:
                                spdbnm.ARTISTS.URI            : artist.uri}
 
                 all_artists_list.append(artist_dict)
+                all_artists_ids.add(artist.id)
 
                 # Building a collection of all Albums-of-Artists.
                 # Only the track's Artists that also belong to the Track's Album's Artists (except when related to it
@@ -282,7 +292,8 @@ class Logic:
                     #      (full_track.album.album_group != tk.model.AlbumGroup.appears_on)):
                     artist_album_dict = {spdbnm.ARTISTS_ALBUMS.ARTIST_ID  : artist.id,
                                          spdbnm.ARTISTS_ALBUMS.ALBUM_ID   : full_track.album.id,
-                                         spdbnm.ARTISTS_ALBUMS.ALBUM_GROUP: str(full_track.album.album_group)}
+                                         spdbnm.ARTISTS_ALBUMS.ALBUM_GROUP: full_track.album.album_group.value if
+                                         full_track.album.album_group is not None else None}
 
                     all_artists_albums_list.append(artist_album_dict)
 
@@ -301,6 +312,9 @@ class Logic:
 
         for i, full_album in enumerate(all_albums_list_unq):
             all_albums_list_unq[i][spdbnm.ALBUMS.IS_AVAILABLE] = albums_availability[full_album[spdbnm.ALBUMS.ID]]
+
+        # Filling attribute `album_group` for each album-artist:
+        full_artists_albums = self.my_spapi.get_artists_albums(all_artists_ids)
 
         # Inserting all values to the corresponding DB-tables:
         self.my_db.insert_listen_history(self.my_spdt.get_tracks_listen_data())

@@ -535,7 +535,8 @@ class DB:
         self.insert(table_name = spdbnm.ARTISTS_ALBUMS.TBL_NAME,
                     values = artists_albums_values,
                     columns_names = [spdbnm.ARTISTS_ALBUMS.ARTIST_ID,
-                                     spdbnm.ARTISTS_ALBUMS.ALBUM_ID],
+                                     spdbnm.ARTISTS_ALBUMS.ALBUM_ID,
+                                     spdbnm.ARTISTS_ALBUMS.ALBUM_GROUP],
                     commit = commit)
 
     def insert_albums_tracks(self, albums_tracks_values: dict | list[dict], commit: bool = False) -> None:
