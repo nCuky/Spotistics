@@ -1,8 +1,10 @@
 # Tasks
 
 ### DB and Logic
+- Warning: If needing to get all tracks in a given FullAlbum, make sure to check tracks.items count. If it's approaching  
+the limit (50) or if ``tracks.next`` is not None, need to fetch the rest using ``client.next(album.tracks.next)``.
 - [ ] Multi-Threading - when fetching large quantity of data, optimize performance so that it fetches using multi processing.
-- [ ] Write logic for creating listen history DataFrame from the DB instead of the files.
+- [x] Write logic for creating listen history DataFrame from the DB instead of the files.
 - [x] Change Artist-Tracks and Artist-Albums DB tables so that they contain only links by entities' ID, without redundancy.
 
 

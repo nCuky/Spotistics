@@ -50,8 +50,8 @@ class Logic:
     @staticmethod
     def get_unique_values(dicts: list[dict]) -> list[dict] | None:
         """
-        Keep only the unique values in a list of dictionaries. A whole dict is taken as a single "value" to compare
-        to others.
+        Keep only the unique **dictionaries** in a list of dicts. Each whole dict is taken as a single "value" to
+        compare to others.
 
         Each dict in the given list **must be flat**, i.e. not an object or a nested dict, because
         they are not supported here.
@@ -69,8 +69,17 @@ class Logic:
         return unique_dict_list
 
     @staticmethod
-    def full_track_to_dict():
-        return None
+    def clean_json_for_public_repo():
+        """
+        Small utility meant to be performed only once.
+
+        Removes private data (such as platform, IP address, etc.) from the listen history JSON files,
+        so they can be included as sample data in the GitHub repo.
+
+        Returns:
+            None
+        """
+        spdt.SpotifyDataSet.clean_json_for_public_repo()
 
     # endregion Utility Methods
 
@@ -80,7 +89,7 @@ class Logic:
         """
         self.my_spapi = spapi(token = Logic.get_token())
         self.my_db = db.DB()
-        self.my_spdt = spdt.SpotifyDataSet()
+        self.my_spdt = spdt.SpotifyDataSet(db_handler = self.my_db)
 
     def get_artist_audio_features_data(self, name: str):
         artist_id = self.my_spapi.find_artist(name).id
@@ -115,42 +124,6 @@ class Logic:
         """
         self.my_spdt.get_tracks_listen_data().groupby(spdtnm.SONG_KEY).mean().to_csv("mean_by_key.csv")
 
-    def collect_listen_history_to_file(self) -> None:
-        """
-        Saves the listen history DataFrame to a CSV file.
-
-        Returns:
-            None
-        """
-        track_data = self.my_spdt.get_tracks_listen_data()
-
-        # Writing to CSV file:
-        track_file_name = 'all_tracks_raw_{0}.csv'
-
-        Logic.write_df_to_file(track_data, track_file_name)
-
-    def collect_data_and_save(self):
-        """
-        Collect all listen history, extract models' (tracks, artists, etc.) information from it
-        and save it in the local DB.
-
-        Returns:
-            None.
-        """
-        try:
-            full_tracks_mdlist = self.my_spapi.get_full_tracks(tracks = self.my_spdt.get_tracks_listen_data()[
-                spdtnm.TRACK_ID])
-
-            self.save_full_tracks_to_db(full_tracks_mdlist)
-
-            # Writing to CSV file:
-            track_file_name = 'known_tracks_{0}.csv'
-
-            Logic.write_df_to_file(self.my_spdt.get_tracks_listen_data(), track_file_name)
-
-        except tk.ServiceUnavailable as ex:
-            return
-
     def count_unique_tracks(self) -> pd.DataFrame:
         tracks_df = self.my_spdt.get_tracks_listen_data()
 
@@ -166,6 +139,46 @@ class Logic:
             track_name = (spdtnm.TRACK_NAME, 'first'))
 
         return tracks_count
+
+    def collect_listen_history_to_file(self) -> None:
+        """
+        Saves the listen history DataFrame to a CSV file.
+
+        Returns:
+            None
+        """
+        track_data = self.my_spdt.get_tracks_listen_data()
+
+        # Writing to CSV file:
+        track_file_name = 'all_tracks_raw_{0}.csv'
+
+        Logic.write_df_to_file(track_data, track_file_name)
+
+    def collect_data_and_save(self, to_csv_also: bool = False):
+        """
+        Collect all listen history, extract models' (tracks, artists, etc.) information from it
+        and save it in the local DB.
+
+        Parameters:
+            to_csv_also: Whether to also save the listen history to a CSV file, after saving into the DB.
+
+        Returns:
+            None.
+        """
+        try:
+            full_tracks_mdlist = self.my_spapi.get_full_tracks(tracks = self.my_spdt.get_tracks_listen_data()[
+                spdtnm.TRACK_ID])
+
+            self.save_full_tracks_to_db(full_tracks_mdlist)
+
+            if to_csv_also:
+                # Writing the listen history into a CSV file:
+                track_file_name = 'known_tracks_{0}.csv'
+
+                Logic.write_df_to_file(self.my_spdt.get_tracks_listen_data(), track_file_name)
+
+        except tk.ServiceUnavailable as ex:
+            return
 
     def save_full_tracks_to_db(self, full_tracks: tk.model.ModelList[tk.model.FullTrack]) -> None:
         """
@@ -188,8 +201,37 @@ class Logic:
         all_albums_tracks_list = []
         all_artists_albums_list = []
 
+        # linked_from_tracks_ids = []
+        all_albums_ids = set()
+
         for full_track in full_tracks:
-            # Copying current track to a collection of all Tracks:
+            # track_considered_dead = False
+
+            # Building a collection of all Linked Tracks, and a collection of all Tracks-of-Albums:
+            if full_track.linked_from is None:
+                # For non-linked tracks, "fake-linking" the Track ID to itself, to maintain consistency later:
+                linked_track_dict = {spdbnm.TRACKS_LINKED_FROM.FROM_ID    : full_track.id,
+                                     spdbnm.TRACKS_LINKED_FROM.RELINKED_ID: full_track.id}
+
+                # For non-linked tracks, linking the Album ID to the Track ID:
+                album_track_dict = {spdbnm.ALBUMS_TRACKS.ALBUM_ID: full_track.album.id,
+                                    spdbnm.ALBUMS_TRACKS.TRACK_ID: full_track.id}
+
+            else:
+                # For linked tracks, linking the Track ID to the Track's Linked From ID:
+                linked_track_dict = {spdbnm.TRACKS_LINKED_FROM.FROM_ID    : full_track.linked_from.id,
+                                     spdbnm.TRACKS_LINKED_FROM.RELINKED_ID: full_track.id}
+
+                # For linked tracks, linking the Album ID to the Track's Linked From ID:
+                album_track_dict = {spdbnm.ALBUMS_TRACKS.ALBUM_ID: full_track.album.id,
+                                    spdbnm.ALBUMS_TRACKS.TRACK_ID: full_track.linked_from.id}
+
+                # linked_from_tracks_ids.append(full_track.linked_from.id)
+
+            all_linked_tracks_list.append(linked_track_dict)
+            all_albums_tracks_list.append(album_track_dict)
+
+            # Building a collection of all Tracks:
             track_dict = {spdbnm.TRACKS.ID          : full_track.id,
                           spdbnm.TRACKS.NAME        : full_track.name,
                           spdbnm.TRACKS.DURATION_MS : full_track.duration_ms,
@@ -207,26 +249,19 @@ class Logic:
 
             all_tracks_list.append(track_dict)
 
-            # Copying current track's Album to a collection of all Albums:
+            # Building a collection of all Albums:
             album_dict = {spdbnm.ALBUMS.ID                    : full_track.album.id,
                           spdbnm.ALBUMS.NAME                  : full_track.album.name,
                           spdbnm.ALBUMS.TOTAL_TRACKS          : full_track.album.total_tracks,
                           spdbnm.ALBUMS.RELEASE_DATE          : full_track.album.release_date,
                           spdbnm.ALBUMS.RELEASE_DATE_PRECISION: full_track.album.release_date_precision.value,
                           spdbnm.ALBUMS.ALBUM_TYPE            : full_track.album.album_type.value,
+                          spdbnm.ALBUMS.IS_AVAILABLE          : None,
                           spdbnm.ALBUMS.HREF                  : full_track.album.href,
                           spdbnm.ALBUMS.URI                   : full_track.album.uri}
 
             all_albums_list.append(album_dict)
-
-            linked_track_dict = db.DB.get_linked_from_for_insert(full_track)
-            all_linked_tracks_list.append(linked_track_dict)
-
-            # Copying current track to a collection of all Tracks-of-Albums:
-            album_track_dict = {spdbnm.ALBUMS_TRACKS.ALBUM_ID: full_track.album.id,
-                                spdbnm.ALBUMS_TRACKS.TRACK_ID: full_track.id}
-
-            all_albums_tracks_list.append(album_track_dict)
+            all_albums_ids.add(full_track.album.id)
 
             for artist in full_track.artists:
                 # Copying current track's artists to a collection of all Artists:
@@ -239,37 +274,41 @@ class Logic:
 
                 all_artists_list.append(artist_dict)
 
-                # Copying current track's artists to a collection of all Albums-of-Artists.
-                # Only Track's Artists that also belong to the Track's Album's Artists
-                # (except when related to it with 'Appears On' relationship) are collected.
-                if (artist in full_track.album.artists) & (
-                        (full_track.album.album_group is None) |
-                        (full_track.album.album_group != tk.model.AlbumGroup.appears_on)):
-                    artist_album_dict = {spdbnm.ARTISTS_ALBUMS.ARTIST_ID: artist.id,
-                                         spdbnm.ARTISTS_ALBUMS.ALBUM_ID : full_track.album.id}
+                # Building a collection of all Albums-of-Artists.
+                # Only the track's Artists that also belong to the Track's Album's Artists (except when related to it
+                # with 'Appears On' relationship) are collected.
+                if artist in full_track.album.artists:
+                    # and ((full_track.album.album_group is None) or
+                    #      (full_track.album.album_group != tk.model.AlbumGroup.appears_on)):
+                    artist_album_dict = {spdbnm.ARTISTS_ALBUMS.ARTIST_ID  : artist.id,
+                                         spdbnm.ARTISTS_ALBUMS.ALBUM_ID   : full_track.album.id,
+                                         spdbnm.ARTISTS_ALBUMS.ALBUM_GROUP: str(full_track.album.album_group)}
 
                     all_artists_albums_list.append(artist_album_dict)
 
-        # region Keeping unique values in the default way:
+        # Keeping only the unique values in each list:
         all_tracks_list_unq = Logic.get_unique_values(all_tracks_list)
         all_linked_tracks_list_unq = Logic.get_unique_values(all_linked_tracks_list)
         all_artists_list_unq = Logic.get_unique_values(all_artists_list)
         all_albums_list_unq = Logic.get_unique_values(all_albums_list)
         all_albums_tracks_list_unq = Logic.get_unique_values(all_albums_tracks_list)
         all_artists_albums_list_unq = Logic.get_unique_values(all_artists_albums_list)
-        # endregion
 
-        # region Keeping unique values:
+        # Filling attribute `is_available` for each album:
+        full_albums = self.my_spapi.get_full_albums(all_albums_ids)
 
-        # endregion
+        albums_availability = {_full_album.id: len(_full_album.available_markets) > 0 for _full_album in full_albums}
 
+        for i, full_album in enumerate(all_albums_list_unq):
+            all_albums_list_unq[i][spdbnm.ALBUMS.IS_AVAILABLE] = albums_availability[full_album[spdbnm.ALBUMS.ID]]
+
+        # Inserting all values to the corresponding DB-tables:
+        self.my_db.insert_listen_history(self.my_spdt.get_tracks_listen_data())
         self.my_db.insert_tracks(all_tracks_list_unq)
         self.my_db.insert_linked_tracks(all_linked_tracks_list_unq)
         self.my_db.insert_artists(all_artists_list_unq)
         self.my_db.insert_albums(all_albums_list_unq)
         self.my_db.insert_albums_tracks(all_albums_tracks_list_unq)
         self.my_db.insert_artists_albums(all_artists_albums_list_unq)
-
-        self.my_db.insert_listen_history(self.my_spdt.get_tracks_listen_data())
 
         self.my_db.commit()

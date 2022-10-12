@@ -2,8 +2,10 @@ import numpy as np
 import pandas as pd
 import re
 import os.path
+from pathlib import Path
 import log
 import db
+import json
 from names import Spdt as spdtnm
 
 
@@ -15,24 +17,64 @@ class SpotifyDataSet:
                           spdtnm.ALBUM_ARTIST_NAME,
                           spdtnm.ALBUM_NAME]
 
-    COLUMNS_TO_RENAME = {'master_metadata_track_name'       : spdtnm.TRACK_NAME,
+    COLUMNS_TO_RENAME = {'ts'                               : spdtnm.TIMESTAMP,
+                         'spotify_track_uri'                : spdtnm.TRACK_URI,
+                         'master_metadata_track_name'       : spdtnm.TRACK_NAME,
                          'master_metadata_album_artist_name': spdtnm.ALBUM_ARTIST_NAME,
                          'master_metadata_album_album_name' : spdtnm.ALBUM_NAME}
+
+    DEFAULT_JSON_FILE_PATH = 'data/personal_data/raw_json'
+    DEFAULT_JSON_FILE_PREFIX = 'endsong'
 
     # region Utility Methods
 
     @staticmethod
-    def collect_all_listen_history(db_handler: db.DB = None,
-                                   folder_path: str = None,
-                                   filename_prefix: str = 'endsong') -> pd.DataFrame:
+    def clean_json_for_public_repo():
+        """
+        Small utility meant to be performed only once.
+
+        Removes private data (such as platform, IP address, etc.) from the listen history JSON files,
+        so they can be included as sample data in the GitHub repo.
+
+        Returns:
+            None
+        """
+        files_list = [filename for filename in os.listdir(SpotifyDataSet.DEFAULT_JSON_FILE_PATH) if
+                      re.match(string = filename, pattern = f'{SpotifyDataSet.DEFAULT_JSON_FILE_PREFIX}.*.json')]
+
+        # Trying to read all 'Listen History' files that are available in the given folder:
+        for filename in files_list:
+            source_file_path = SpotifyDataSet.DEFAULT_JSON_FILE_PATH + '/' + filename
+
+            if os.path.isfile(source_file_path):
+                with open(source_file_path, "rt", encoding = 'utf-8') as file_to_read:
+                    json_data = json.load(file_to_read)
+                    cleaned_json_data = []
+
+                    for item in json_data:
+                        cleaned_item = item
+                        cleaned_item[spdtnm.PLATFORM] = ''
+                        cleaned_item[spdtnm.IP_ADDRESS] = ''
+                        cleaned_item[spdtnm.USER_AGENT] = ''
+
+                        cleaned_json_data.append(cleaned_item)
+
+                dest_file_path = SpotifyDataSet.DEFAULT_JSON_FILE_PATH + '/cleaned'
+                Path(dest_file_path).mkdir(parents = True, exist_ok = True)
+                dest_file_path += '/' + filename
+
+                with open(dest_file_path, 'wt', encoding = 'utf-8') as file_to_write:
+                    json.dump(cleaned_json_data, file_to_write, indent = 4)
+
+    @staticmethod
+    def collect_all_listen_history(folder_path: str = None,
+                                   filename_prefix: str = DEFAULT_JSON_FILE_PREFIX) -> pd.DataFrame:
         """
         Reads all Listen History data, either from an existing DB,
         or from JSON files (already requested and downloaded from Spotify) contained in the given
         folder. Prepares and organizes data into a single DataFrame.
 
         Parameters:
-            db_handler: DB object to use instead of reading JSON files and calling the API.
-
             folder_path: Path to a folder containing at least one Spotify Listen History JSON file.
                 Filenames should already start with the given filename_prefix (e.g. 'endsong.json' or 'endsong_3.json').
 
@@ -44,29 +86,25 @@ class SpotifyDataSet:
         """
         all_listens_df: pd.DataFrame = None
 
-        if db_handler is not None:
-            all_listens_df = db_handler.get_listen_history_df()
+        files_list = [filename for filename in os.listdir(folder_path) if
+                      re.match(string = filename, pattern = f'{filename_prefix}.*.json')]
 
-        else:
-            files_list = [filename for filename in os.listdir(folder_path) if
-                          re.match(string = filename, pattern = f'{filename_prefix}.*.json')]
+        # Trying to read all 'Listen History' files that are available in the given folder:
+        for filename in files_list:
+            curr_listen_json_df = None
+            file_path = folder_path + '/' + filename
 
-            # Trying to read all 'Listen History' files that are available in the given folder:
-            for filename in files_list:
-                curr_listen_json_df = None
-                file_path = folder_path + '/' + filename
+            if os.path.isfile(file_path):
+                log.write(log.READING_FILE.format(filename))
 
-                if os.path.isfile(file_path):
-                    log.write(log.READING_FILE.format(filename))
+                curr_listen_json_df = pd.read_json(file_path, encoding = 'utf-8')
 
-                    curr_listen_json_df = pd.read_json(file_path, encoding = 'utf-8')
+            if curr_listen_json_df is None:
+                log.write(log.NONEXISTENT_FILE.format(filename))
 
-                if curr_listen_json_df is None:
-                    log.write(log.NONEXISTENT_FILE.format(filename))
-
-                else:
-                    all_listens_df = curr_listen_json_df.copy() if all_listens_df is None \
-                        else pd.concat([all_listens_df, curr_listen_json_df])
+            else:
+                all_listens_df = curr_listen_json_df.copy() if all_listens_df is None \
+                    else pd.concat([all_listens_df, curr_listen_json_df])
 
         return all_listens_df
 
@@ -98,13 +136,16 @@ class SpotifyDataSet:
                        spdtnm.EPISODE_NAME, spdtnm.EPISODE_SHOW_NAME, spdtnm.EPISODE_URI],
             inplace = False)
 
-        # Sorting the DataFrame by timestamp of listening, then by Milliseconds Played.
+        prepped_df = prepped_df.rename(columns = SpotifyDataSet.COLUMNS_TO_RENAME,
+                                       inplace = False)
+
+        # Sorting the DataFrame by username, then by timestamp of listening, then by Milliseconds Played.
         # 1. Timestamp of listening is NOT unique. Sometimes, in a certain timestamp, multiple tracks were played,
-        # or the same track multiple times. Usually, most of these instances would have ms_played = 0.
+        #    or the same track multiple times. Usually, most of these instances would have ms_played = 0.
         # 2. Because there are multiple source JSON files, each one of them has its own index starting from 0,
-        # which causes duplicate index values in the final DataFrame.
-        # This is why ignore_index = True is needed here:
-        prepped_df = prepped_df.sort_values(by = [spdtnm.TIMESTAMP, spdtnm.MS_PLAYED],
+        #    which causes duplicate index values in the final DataFrame.
+        #    This is why ignore_index = True is needed here:
+        prepped_df = prepped_df.sort_values(by = [spdtnm.USERNAME, spdtnm.TIMESTAMP, spdtnm.MS_PLAYED],
                                             ascending = True,
                                             ignore_index = True,
                                             inplace = False, )
@@ -121,9 +162,6 @@ class SpotifyDataSet:
         # Here, I'm keeping only the last ms_played value (should be maximal) of each duplicate-tracks-cluster:
         prepped_df = prepped_df.drop_duplicates(subset = [spdtnm.TIMESTAMP, spdtnm.USERNAME, spdtnm.TRACK_ID],
                                                 keep = 'last', inplace = False)
-
-        prepped_df = prepped_df.rename(columns = SpotifyDataSet.COLUMNS_TO_RENAME,
-                                       inplace = False)
 
         # Edge-case: Artist "Joey Bada$$" causes errors, because matplotlib interprets '$$' as math text.
         # Replacing all "$$" with "\$\$":
@@ -189,16 +227,15 @@ class SpotifyDataSet:
 
     def __init__(self,
                  db_handler: db.DB = None,
-                 data_dir: str = 'data/personal_data/raw_json'):
+                 data_dir: str = DEFAULT_JSON_FILE_PATH):
         """
-        Reads data from Spotify JSON data files into a parse-able dataframe.
+        Reads data from Spotify JSON data files into a parsable dataframe.
 
-        Parameters;
+        Parameters:
             db_handler: DB Handler object, from which to fetch the data,
             instead of reading JSON files and calling the API.
 
-            data_dir: Directory of the data files. Can be 'data/dl_sample_data' for the downloaded sample,
-            or 'data/personal_data' for my personal account data.
+            data_dir: Directory of the data files.
         """
         self._db_handler = db_handler
         self._data_dir = data_dir
@@ -219,9 +256,13 @@ class SpotifyDataSet:
             Listen History DataFrame.
         """
         if self._all_tracks_df is None:
-            self._all_tracks_df = SpotifyDataSet.collect_all_listen_history(db_handler = self._db_handler,
-                                                                            folder_path = self._data_dir)
-            self._all_tracks_df = SpotifyDataSet.prepare_track_listen_history(listen_history_df = self._all_tracks_df)
+            if self._db_handler is None:
+                self._all_tracks_df = SpotifyDataSet.collect_all_listen_history(folder_path = self._data_dir)
+                self._all_tracks_df = SpotifyDataSet.prepare_track_listen_history(
+                    listen_history_df = self._all_tracks_df)
+
+            else:
+                self._all_tracks_df = self._db_handler.get_listen_history_df()
 
         return self._all_tracks_df
 

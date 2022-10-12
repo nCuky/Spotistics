@@ -1,15 +1,24 @@
 import datetime as dt
 import traceback
 
+# File operations
 READING_FILE = "Now reading file: {0}..."
 NONEXISTENT_FILE = "File doesn't exist: {0}"
 WRITING_FILE = "Now writing file: {0}..."
 FILE_WRITTEN = "File written successfully: {0}"
+
+# Fetching:
 FETCHING_TRACKS_ATTRS = "Fetching FullTrack attributes for {0} tracks (might take a while)..."
 TRACKS_ATTRS_FETCHED = "FullTrack attributes were successfully fetched for {0} tracks."
+FETCHING_ALBUMS_ATTRS = "Fetching FullAlbum attributes for {0} albums (might take a while)..."
+ALBUMS_ATTRS_FETCHED = "FullAlbum attributes were successfully fetched for {0} albums."
 FETCHING_RECENTLY_PLAYED = "Fetching the current user's Recently Played Tracks..."
 RECENTLY_PLAYED_FETCHED = "The current user's Recently Played Tracks were successfully fetched."
+
+# API Errors:
 API_SERVICE_UNAVAILABLE = 'Spotify API Service is unavailable. Original error: {0}'
+
+# DB Errors:
 EMPTY_VALUES = 'No {0} values were given, so no DB-action was performed.'
 CANNOT_INSERT = 'ERROR: Could not insert the following: {0}'
 DB_SCHEMA_ERROR = 'ERROR in DB Schema script.'

@@ -8,8 +8,7 @@ import matplotlib.ticker as ticker
 import seaborn as sns
 from names import Spdt as spdt
 
-
-# --- Initializing the application, fetching data and displaying graphs ---
+# Initializing the application:
 my_lg = lg()
 my_lg.collect_data_and_save()
 

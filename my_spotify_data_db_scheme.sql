@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS albums (
 	release_date TEXT,
 	release_date_precision TEXT,
 	album_type TEXT,
+	is_available BOOLEAN,
 	href TEXT,
 	uri TEXT,
 	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
@@ -64,9 +65,19 @@ CREATE TABLE IF NOT EXISTS artists (
 	updated_at DATETIME
 );
 
+CREATE TABLE IF NOT EXISTS genres (
+	genre_id INTEGER PRIMARY KEY NOT NULL,
+	name TEXT NOT NULL UNIQUE,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME
+);
+
 CREATE TABLE IF NOT EXISTS artists_albums (
 	artist_id TEXT NOT NULL,
 	album_id TEXT NOT NULL,
+	album_group TEXT,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME,
 	PRIMARY KEY (artist_id, album_id),
 	FOREIGN KEY (artist_id) REFERENCES artists(artist_id),
 	FOREIGN KEY (album_id) REFERENCES albums(album_id)
@@ -75,19 +86,18 @@ CREATE TABLE IF NOT EXISTS artists_albums (
 CREATE TABLE IF NOT EXISTS albums_tracks (
 	album_id TEXT NOT NULL,
 	track_id TEXT NOT NULL,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME,
 	PRIMARY KEY (album_id, track_id),
 	FOREIGN KEY (album_id) REFERENCES albums(album_id),
 	FOREIGN KEY (track_id) REFERENCES tracks(track_id)
 );
 
-CREATE TABLE IF NOT EXISTS genres (
-	genre_id INTEGER PRIMARY KEY NOT NULL,
-	name TEXT NOT NULL UNIQUE
-);
-
 CREATE TABLE IF NOT EXISTS artists_genres (
 	artist_id TEXT NOT NULL,
 	genre_id TEXT NOT NULL,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME,
 	PRIMARY KEY (artist_id, genre_id),
 	FOREIGN KEY (artist_id) REFERENCES artists(artist_id),
 	FOREIGN KEY (genre_id) REFERENCES genres(genre_id)
@@ -96,13 +106,24 @@ CREATE TABLE IF NOT EXISTS artists_genres (
 CREATE TABLE IF NOT EXISTS linked_tracks (
 	linked_from_id TEXT NOT NULL,
 	track_known_id TEXT NOT NULL,
+	is_linked BOOLEAN GENERATED ALWAYS AS (linked_from_id != track_known_id) VIRTUAL,
 	PRIMARY KEY (linked_from_id),
 	FOREIGN KEY (track_known_id) REFERENCES tracks(track_id) 
 );
 
+CREATE TABLE IF NOT EXISTS linked_albums (
+	linked_from_id TEXT NOT NULL,
+	album_known_id TEXT NOT NULL,
+	is_linked BOOLEAN GENERATED ALWAYS AS (linked_from_id != album_known_id) VIRTUAL,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME,
+	PRIMARY KEY (linked_from_id),
+	FOREIGN KEY (album_known_id) REFERENCES albums(album_id) 
+);
+
 CREATE TABLE IF NOT EXISTS tracks_listen_history (
-	time_stamp TEXT NOT NULL,
 	username TEXT NOT NULL,
+	time_stamp TEXT NOT NULL,
 	track_id TEXT NOT NULL,
 	ms_played INTEGER,
 	reason_start TEXT,
@@ -116,7 +137,7 @@ CREATE TABLE IF NOT EXISTS tracks_listen_history (
 	incognito_mode BOOLEAN,
 	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
 	updated_at DATETIME,
-	PRIMARY KEY (time_stamp, username, track_id)
+	PRIMARY KEY (username, time_stamp, track_id)
 	FOREIGN KEY (track_id) REFERENCES linked_tracks(linked_from_id)
 );
 
@@ -147,13 +168,46 @@ CREATE INDEX IF NOT EXISTS idx_tracks_listen_history_reason
 
 -- Views definition --
 
+CREATE VIEW IF NOT EXISTS v_tracks
+	AS SELECT tracks.track_id,
+			tracks.name,
+			tracks.duration_ms,
+			tracks.disc_number,
+			tracks.track_number,
+			tracks.explicit,
+			tracks.popularity,
+			tracks.is_local,
+			tracks.is_playable,
+			tracks.isrc,
+			tracks.href,
+			tracks.uri,
+			tracks.preview_url,
+			linked_tracks.is_linked AS is_linked,
+			linked_tracks.linked_from_id AS linked_from_id,
+			tracks.created_at,
+			tracks.updated_at
+	FROM tracks
+	LEFT OUTER JOIN linked_tracks ON linked_tracks.track_known_id = tracks.track_id
+								  AND linked_tracks.is_linked = TRUE;
+
+CREATE VIEW IF NOT EXISTS v_albums_tracks
+	AS SELECT albums_tracks.album_id,
+			  albums_tracks.track_id,
+			  linked_albums.is_linked AS is_album_linked,
+			  linked_albums.album_known_id AS album_known_id, 
+			  linked_tracks.is_linked AS is_track_linked,
+			  linked_tracks.track_known_id AS track_known_id
+	FROM albums_tracks
+	INNER JOIN linked_albums ON linked_albums.linked_from_id = albums_tracks.album_id
+	INNER JOIN linked_tracks ON linked_tracks.linked_from_id = albums_tracks.track_id;
+								 
 CREATE VIEW IF NOT EXISTS v_tracks_listen_history 
-	AS SELECT tracks_listen_history.time_stamp,
-			tracks_listen_history.username,
-			tracks_listen_history.track_id AS track_listened_id,
+	AS SELECT tracks_listen_history.username,
+			tracks_listen_history.time_stamp,
+			tracks_listen_history.track_id AS track_id,
 			linked_tracks.track_known_id AS track_known_id,
 			tracks.name as track_name,
-			artists.name as artist_name,
+			artists.name as album_artist_name,
 			tracks_listen_history.ms_played,
 			tracks_listen_history.reason_start,
 			tracks_listen_history.reason_end,
@@ -163,14 +217,18 @@ CREATE VIEW IF NOT EXISTS v_tracks_listen_history
 			--tracks_listen_history.uri,
 			tracks_listen_history.shuffle,
 			tracks_listen_history.offline,
-			tracks_listen_history.incognito_mode
+			tracks_listen_history.incognito_mode,
+			tracks_listen_history.created_at,
+			tracks_listen_history.updated_at 
 	FROM tracks_listen_history
 	INNER JOIN linked_tracks ON linked_tracks.linked_from_id = tracks_listen_history.track_id
 	INNER JOIN tracks ON tracks.track_id = linked_tracks.track_known_id -- For track name
 	INNER JOIN albums_tracks ON albums_tracks.track_id = linked_tracks.linked_from_id  
 	INNER JOIN artists_albums ON artists_albums.album_id = albums_tracks.album_id 
 		--( SELECT FIRST artist_id FROM artists_albums WHERE artists_albums.album_id = albums_tracks.album_id )
-	INNER JOIN artists ON artists.artist_id = artists_albums.artist_id; 
+	INNER JOIN artists ON artists.artist_id = artists_albums.artist_id
+	ORDER BY username ASC,
+             time_stamp ASC;
 
 
 -- Triggers definition --
@@ -183,3 +241,52 @@ CREATE TRIGGER IF NOT EXISTS trg_update_tracks_updated_at
 			WHERE track_id = NEW.track_id;
 	END;
 
+CREATE TRIGGER IF NOT EXISTS trg_update_albums_updated_at
+	AFTER UPDATE ON albums
+	BEGIN 
+		UPDATE albums
+			SET updated_at = (datetime(CURRENT_TIMESTAMP, 'localtime'))
+			WHERE album_id = NEW.album_id;
+	END;
+
+CREATE TRIGGER IF NOT EXISTS trg_update_artists_updated_at
+	AFTER UPDATE ON artists
+	BEGIN 
+		UPDATE albums
+			SET updated_at = (datetime(CURRENT_TIMESTAMP, 'localtime'))
+			WHERE artist_id = NEW.artist_id;
+	END;
+
+CREATE TRIGGER IF NOT EXISTS trg_update_genres_updated_at
+	AFTER UPDATE ON genres
+	BEGIN 
+		UPDATE genres
+			SET updated_at = (datetime(CURRENT_TIMESTAMP, 'localtime'))
+			WHERE genre_id = NEW.genre_id;
+	END;
+
+CREATE TRIGGER IF NOT EXISTS trg_update_artists_albums_updated_at
+	AFTER UPDATE ON artists_albums
+	BEGIN 
+		UPDATE artists_albums
+			SET updated_at = (datetime(CURRENT_TIMESTAMP, 'localtime'))
+			WHERE artist_id = NEW.artist_id
+			  AND album_id  = NEW.album_id;
+	END;
+
+CREATE TRIGGER IF NOT EXISTS trg_update_albums_tracks_updated_at
+	AFTER UPDATE ON albums_tracks
+	BEGIN 
+		UPDATE albums_tracks
+			SET updated_at = (datetime(CURRENT_TIMESTAMP, 'localtime'))
+			WHERE album_id = NEW.album_id
+			  AND track_id = NEW.track_id;
+	END;
+
+CREATE TRIGGER IF NOT EXISTS trg_update_tracks_listen_history_updated_at
+	AFTER UPDATE ON tracks_listen_history
+	BEGIN 
+		UPDATE tracks_listen_history
+			SET updated_at = (datetime(CURRENT_TIMESTAMP, 'localtime'))
+			WHERE track_id = NEW.track_id;
+	END;

@@ -23,7 +23,7 @@ class DB:
     # region Insertion Utilities
 
     @staticmethod
-    def get_track_for_insert(track: tk.model.Track | tk.model.FullTrack | None = None) -> dict | None:
+    def ___get_track_for_insert(track: tk.model.Track | tk.model.FullTrack | None = None) -> dict | None:
         """
         Turn a track into a structure that can be inserted into the **Tracks** DB-table.
 
@@ -48,7 +48,7 @@ class DB:
         return values_out
 
     @staticmethod
-    def get_album_for_insert(track: tk.model.Track | tk.model.FullTrack | None = None) -> dict | None:
+    def __get_album_for_insert(track: tk.model.Track | tk.model.FullTrack | None = None) -> dict | None:
         """
         Turn a track's Album into a structure that can be inserted into the **Albums** DB-table.
 
@@ -69,12 +69,15 @@ class DB:
         return values_out
 
     @staticmethod
-    def get_linked_from_for_insert(track: tk.model.Track | tk.model.FullTrack | None = None) -> dict | None:
+    def __get_linked_from_for_insert(track: tk.model.Track | tk.model.FullTrack | None = None) -> dict | None:
         """
         Turn a track's LinkedFrom value into a structure that can be inserted into the **TracksLinkedFrom** DB-table.
 
-        :param track: A Track (or FullTrack) object from which to take the Linked Track values.
-        :return: Dictionary with the Linked Track's values.
+        Parameters:
+            track: A Track (or FullTrack) object from which to take the Linked Track values.
+
+        Returns:
+            Dictionary with the Linked Track's values.
         """
         linked = track.linked_from
 
@@ -139,7 +142,7 @@ class DB:
     #     return values_out
 
     @staticmethod
-    def get_album_track_for_insert(track: tk.model.FullTrack = None) -> dict | None:
+    def __get_album_track_for_insert(track: tk.model.FullTrack = None) -> dict | None:
         """
         Returns an Album<->Track binding that can be inserted into the **AlbumsTracks** DB-table.
 
@@ -162,7 +165,7 @@ class DB:
         return values_out
 
     @staticmethod
-    def get_listen_history_df_for_insert(listen_history_df: pd.DataFrame) -> pd.DataFrame:
+    def __get_listen_history_df_for_insert(listen_history_df: pd.DataFrame) -> pd.DataFrame:
         """
         Returns a DataFrame ready for insertion to the DB.
 
@@ -172,8 +175,8 @@ class DB:
         Returns:
             DataFrame ready for insertion.
         """
-        df_to_insert = listen_history_df[[spdtnm.TIMESTAMP,
-                                          spdtnm.USERNAME,
+        df_to_insert = listen_history_df[[spdtnm.USERNAME,
+                                          spdtnm.TIMESTAMP,
                                           spdtnm.TRACK_ID,
                                           spdtnm.MS_PLAYED,
                                           spdtnm.REASON_START,
@@ -187,14 +190,14 @@ class DB:
                                           spdtnm.INCOGNITO]].fillna(value = {spdtnm.SKIPPED: ''},
                                                                     inplace = False)
 
-        df_to_insert = df_to_insert.rename(columns = {spdtnm.TIMESTAMP: spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP,
-                                                      spdtnm.USERNAME : spdbnm.TRACKS_LISTEN_HISTORY.USERNAME,
-                                                      spdtnm.TRACK_ID : spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID,
-                                                      spdtnm.TRACK_URI: spdbnm.TRACKS_LISTEN_HISTORY.URI})
+        # df_to_insert = df_to_insert.rename(columns = {spdtnm.TIMESTAMP: spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP,
+        #                                               spdtnm.USERNAME : spdbnm.TRACKS_LISTEN_HISTORY.USERNAME,
+        #                                               spdtnm.TRACK_ID : spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID,
+        #                                               spdtnm.TRACK_URI: spdbnm.TRACKS_LISTEN_HISTORY.URI})
 
         df_to_insert = df_to_insert.drop_duplicates(
-            subset = [spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP,
-                      spdbnm.TRACKS_LISTEN_HISTORY.USERNAME,
+            subset = [spdbnm.TRACKS_LISTEN_HISTORY.USERNAME,
+                      spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP,
                       spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID])
 
         return df_to_insert
@@ -235,6 +238,54 @@ class DB:
     # endregion Instantiation logic
 
     # region Insertion Logic
+
+    def insert(self,
+               table_name: str,
+               values: dict | list[dict],
+               columns_names: list[str],
+               commit: bool = False) -> None:
+        """
+        Generic method to insert single or multiple values to a table.
+
+        Parameters:
+            table_name: Name of the DB-table, into which to insert the values.
+
+            columns_names: A list of strings, containing the names of the columns into which to insert
+                the values. The columns' names must be ordered the same way as the values in parameter 'values'.
+
+            values: Dictionary, or a List of Dicts, each containing a desired value to insert.
+
+            commit: Whether to commit the operation.
+
+        Returns:
+            None.
+        """
+        if values is None:
+            log.write("WARNING: " + log.EMPTY_VALUES.format(table_name))
+
+        else:
+            try:
+                query = f"""INSERT OR REPLACE INTO {table_name} 
+                ({', '.join([name for name in columns_names])})
+
+                VALUES 
+                ({', '.join([f":{name}" for name in columns_names])});"""
+
+                match values:
+                    case dict() as values:
+                        self.cursor.execute(query, values)
+
+                    case list() as values:
+                        self.cursor.executemany(query, values)
+
+                if commit:
+                    self.commit()
+
+            except sqlite3.IntegrityError as e:
+                DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
+
+            except sqlite3.OperationalError as e:
+                DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
 
     def insert_tracks(self, tracks_values: dict | list[dict], commit: bool = False) -> None:
         """
@@ -366,48 +417,61 @@ class DB:
         Returns:
             None.
         """
-        if albums_values is None:
-            log.write("WARNING: " + log.EMPTY_VALUES.format('Albums'))
+        self.insert(table_name = spdbnm.ALBUMS.TBL_NAME,
+                    values = albums_values,
+                    columns_names = [spdbnm.ALBUMS.ID,
+                                     spdbnm.ALBUMS.NAME,
+                                     spdbnm.ALBUMS.TOTAL_TRACKS,
+                                     spdbnm.ALBUMS.RELEASE_DATE,
+                                     spdbnm.ALBUMS.RELEASE_DATE_PRECISION,
+                                     spdbnm.ALBUMS.ALBUM_TYPE,
+                                     spdbnm.ALBUMS.IS_AVAILABLE,
+                                     spdbnm.ALBUMS.HREF,
+                                     spdbnm.ALBUMS.URI],
+                    commit = commit)
 
-        else:
-            try:
-                query = f"""INSERT OR REPLACE INTO {spdbnm.ALBUMS.TBL_NAME} (
-                {spdbnm.ALBUMS.ID},
-                {spdbnm.ALBUMS.NAME},                
-                {spdbnm.ALBUMS.TOTAL_TRACKS},
-                {spdbnm.ALBUMS.RELEASE_DATE},
-                {spdbnm.ALBUMS.RELEASE_DATE_PRECISION},
-                {spdbnm.ALBUMS.ALBUM_TYPE},
-                {spdbnm.ALBUMS.HREF},
-                {spdbnm.ALBUMS.URI}
-                )
-
-                VALUES (
-                :{spdbnm.ALBUMS.ID},
-                :{spdbnm.ALBUMS.NAME},                
-                :{spdbnm.ALBUMS.TOTAL_TRACKS},
-                :{spdbnm.ALBUMS.RELEASE_DATE},
-                :{spdbnm.ALBUMS.RELEASE_DATE_PRECISION},
-                :{spdbnm.ALBUMS.ALBUM_TYPE},
-                :{spdbnm.ALBUMS.HREF},
-                :{spdbnm.ALBUMS.URI}
-                );"""
-
-                match albums_values:
-                    case dict() as albums_values:
-                        self.cursor.execute(query, albums_values)
-
-                    case list() as albums_values:
-                        self.cursor.executemany(query, albums_values)
-
-                if commit:
-                    self.commit()
-
-            except sqlite3.IntegrityError as e:
-                DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
-
-            except sqlite3.OperationalError as e:
-                DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
+        # if albums_values is None:
+        #     log.write("WARNING: " + log.EMPTY_VALUES.format('Albums'))
+        #
+        # else:
+        #     try:
+        #         query = f"""INSERT OR REPLACE INTO {spdbnm.ALBUMS.TBL_NAME} (
+        #         {spdbnm.ALBUMS.ID},
+        #         {spdbnm.ALBUMS.NAME},
+        #         {spdbnm.ALBUMS.TOTAL_TRACKS},
+        #         {spdbnm.ALBUMS.RELEASE_DATE},
+        #         {spdbnm.ALBUMS.RELEASE_DATE_PRECISION},
+        #         {spdbnm.ALBUMS.ALBUM_TYPE},
+        #         {spdbnm.ALBUMS.HREF},
+        #         {spdbnm.ALBUMS.URI}
+        #         )
+        #
+        #         VALUES (
+        #         :{spdbnm.ALBUMS.ID},
+        #         :{spdbnm.ALBUMS.NAME},
+        #         :{spdbnm.ALBUMS.TOTAL_TRACKS},
+        #         :{spdbnm.ALBUMS.RELEASE_DATE},
+        #         :{spdbnm.ALBUMS.RELEASE_DATE_PRECISION},
+        #         :{spdbnm.ALBUMS.ALBUM_TYPE},
+        #         :{spdbnm.ALBUMS.HREF},
+        #         :{spdbnm.ALBUMS.URI}
+        #         );"""
+        #
+        #         match albums_values:
+        #             case dict() as albums_values:
+        #                 self.cursor.execute(query, albums_values)
+        #
+        #             case list() as albums_values:
+        #                 self.cursor.executemany(query, albums_values)
+        #
+        #         if commit:
+        #             self.commit()
+        #
+        #     except sqlite3.IntegrityError as e:
+        #         DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
+        #
+        #     except sqlite3.OperationalError as e:
+        #         DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
 
     def __insert_listen_history_df(self, listen_history_df: pd.DataFrame, commit: bool = False) -> None:
         """
@@ -421,114 +485,41 @@ class DB:
         Returns:
             None.
         """
-        if listen_history_df is None:
-            log.write("WARNING: " + log.EMPTY_VALUES.format('Listen History'))
+        listen_history_list = listen_history_df.to_dict('records')
 
-        else:
-            listen_history_list = listen_history_df.to_dict('records')
+        self.insert(table_name = spdbnm.TRACKS_LISTEN_HISTORY.TBL_NAME,
+                    values = listen_history_list,
+                    columns_names = [spdbnm.TRACKS_LISTEN_HISTORY.USERNAME,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.MS_PLAYED,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.REASON_START,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.REASON_END,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.SKIPPED,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.PLATFORM,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.CONN_COUNTRY,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.URI,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.SHUFFLE,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.OFFLINE,
+                                     spdbnm.TRACKS_LISTEN_HISTORY.INCOGNITO_MODE],
+                    commit = commit)
 
-            query = f"""INSERT OR REPLACE INTO {spdbnm.TRACKS_LISTEN_HISTORY.TBL_NAME} (
-            {spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP},
-            {spdbnm.TRACKS_LISTEN_HISTORY.USERNAME},
-            {spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID},
-            {spdbnm.TRACKS_LISTEN_HISTORY.MS_PLAYED},
-            {spdbnm.TRACKS_LISTEN_HISTORY.REASON_START},
-            {spdbnm.TRACKS_LISTEN_HISTORY.REASON_END},
-            {spdbnm.TRACKS_LISTEN_HISTORY.SKIPPED},
-            {spdbnm.TRACKS_LISTEN_HISTORY.PLATFORM},            
-            {spdbnm.TRACKS_LISTEN_HISTORY.CONN_COUNTRY},
-            {spdbnm.TRACKS_LISTEN_HISTORY.URI},            
-            {spdbnm.TRACKS_LISTEN_HISTORY.SHUFFLE},
-            {spdbnm.TRACKS_LISTEN_HISTORY.OFFLINE},
-            {spdbnm.TRACKS_LISTEN_HISTORY.INCOGNITO_MODE})
-
-            VALUES (
-            :{spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP},
-            :{spdbnm.TRACKS_LISTEN_HISTORY.USERNAME},
-            :{spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID},
-            :{spdbnm.TRACKS_LISTEN_HISTORY.MS_PLAYED},
-            :{spdbnm.TRACKS_LISTEN_HISTORY.REASON_START},
-            :{spdbnm.TRACKS_LISTEN_HISTORY.REASON_END},
-            :{spdbnm.TRACKS_LISTEN_HISTORY.SKIPPED},
-            :{spdbnm.TRACKS_LISTEN_HISTORY.PLATFORM},       
-            :{spdbnm.TRACKS_LISTEN_HISTORY.CONN_COUNTRY},
-            :{spdbnm.TRACKS_LISTEN_HISTORY.URI},            
-            :{spdbnm.TRACKS_LISTEN_HISTORY.SHUFFLE},
-            :{spdbnm.TRACKS_LISTEN_HISTORY.OFFLINE},
-            :{spdbnm.TRACKS_LISTEN_HISTORY.INCOGNITO_MODE});"""
-
-            self.cursor.executemany(query, listen_history_list)
-
-            if commit:
-                self.commit()
-
-            # for listened_track in listen_history_df.itertuples(index = False):
-            #     track_str = (listened_track.time_stamp,
-            #                  listened_track.username,
-            #                  listened_track.track_id,
-            #                  listened_track.platform,
-            #                  listened_track.ms_played,
-            #                  listened_track.conn_country,
-            #                  listened_track.uri,
-            #                  listened_track.reason_start,
-            #                  listened_track.reason_end,
-            #                  listened_track.shuffle,
-            #                  listened_track.offline,
-            #                  listened_track.incognito_mode,
-            #                  str(listened_track.skipped))
-            #
-            #     try:
-            #         query = f"""INSERT OR REPLACE INTO {spdbnm.TRACKS_LISTEN_HISTORY.TBL_NAME}
-            #         ({spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.USERNAME},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.PLATFORM},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.MS_PLAYED},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.CONN_COUNTRY},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.URI},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.REASON_START},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.REASON_END},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.SHUFFLE},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.OFFLINE},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.INCOGNITO_MODE},
-            #         {spdbnm.TRACKS_LISTEN_HISTORY.SKIPPED})
-            #
-            #         VALUES (:{spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.USERNAME},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.PLATFORM},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.MS_PLAYED},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.CONN_COUNTRY},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.URI},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.REASON_START},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.REASON_END},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.SHUFFLE},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.OFFLINE},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.INCOGNITO_MODE},
-            #         :{spdbnm.TRACKS_LISTEN_HISTORY.SKIPPED});"""
-            #
-            #         self.cursor.execute(query, track_str)
-            #
-            #     except sqlite3.IntegrityError as e:
-            #         DB.eprint(log.CANNOT_INSERT.format(track_str))
-            #         DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
-            #
-            #     except sqlite3.OperationalError as e:
-            #         DB.eprint(log.CANNOT_INSERT.format(track_str))
-            #         DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
-
-    def insert_listen_history(self, df: pd.DataFrame) -> None:
-        """Insert Listen History table to the DB.
+    def insert_listen_history(self, df: pd.DataFrame, commit: bool = False) -> None:
+        """
+        Insert Listen History table to the DB.
         Cleans data and removes duplicate rows before inserting.
 
-        :param df: DataFrame with Listen History records for inserting.
+        Parameters:
+            df: DataFrame with Listen History records for inserting.
+
+            commit: Whether to commit the operation.
+
+        Returns:
+            None.
         """
-        df_to_insert = DB.get_listen_history_df_for_insert(df)
+        df_to_insert = DB.__get_listen_history_df_for_insert(df)
 
-        # df_to_insert.to_sql(DB.TABLES.TRACKS_LISTEN_HISTORY, con = self.connection, if_exists = "append",
-        # index = False)
-
-        self.__insert_listen_history_df(df_to_insert)
+        self.__insert_listen_history_df(df_to_insert, commit)
 
     def insert_artists_albums(self, artists_albums_values: dict | list[dict], commit: bool = False) -> None:
         """Insert single or multiple Artists' Albums values to the **Artists' Albums** DB table.
@@ -541,34 +532,11 @@ class DB:
         Returns:
             None.
         """
-        if artists_albums_values is None:
-            log.write("WARNING: " + log.EMPTY_VALUES.format('Artist Albums'))
-
-        else:
-            try:
-                query = f"""INSERT OR REPLACE INTO {spdbnm.ARTISTS_ALBUMS.TBL_NAME} 
-                ({spdbnm.ARTISTS_ALBUMS.ARTIST_ID},
-                {spdbnm.ARTISTS_ALBUMS.ALBUM_ID})
-
-                VALUES (
-                :{spdbnm.ARTISTS_ALBUMS.ARTIST_ID},
-                :{spdbnm.ARTISTS_ALBUMS.ALBUM_ID});"""
-
-                match artists_albums_values:
-                    case dict() as artists_albums_values:
-                        self.cursor.execute(query, artists_albums_values)
-
-                    case list() as artists_albums_values:
-                        self.cursor.executemany(query, artists_albums_values)
-
-                if commit:
-                    self.commit()
-
-            except sqlite3.IntegrityError as e:
-                DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
-
-            except sqlite3.OperationalError as e:
-                DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
+        self.insert(table_name = spdbnm.ARTISTS_ALBUMS.TBL_NAME,
+                    values = artists_albums_values,
+                    columns_names = [spdbnm.ARTISTS_ALBUMS.ARTIST_ID,
+                                     spdbnm.ARTISTS_ALBUMS.ALBUM_ID],
+                    commit = commit)
 
     def insert_albums_tracks(self, albums_tracks_values: dict | list[dict], commit: bool = False) -> None:
         """
@@ -582,34 +550,11 @@ class DB:
         Returns:
             None.
         """
-        if albums_tracks_values is None:
-            log.write("WARNING: " + log.EMPTY_VALUES.format('Artist Tracks'))
-
-        else:
-            try:
-                query = f"""INSERT OR REPLACE INTO {spdbnm.ALBUMS_TRACKS.TBL_NAME} 
-                ({spdbnm.ALBUMS_TRACKS.ALBUM_ID},
-                {spdbnm.ALBUMS_TRACKS.TRACK_ID})
-
-                VALUES (
-                :{spdbnm.ALBUMS_TRACKS.ALBUM_ID},
-                :{spdbnm.ALBUMS_TRACKS.TRACK_ID});"""
-
-                match albums_tracks_values:
-                    case dict() as albums_tracks_values:
-                        self.cursor.execute(query, albums_tracks_values)
-
-                    case list() as albums_tracks_values:
-                        self.cursor.executemany(query, albums_tracks_values)
-
-                if commit:
-                    self.commit()
-
-            except sqlite3.IntegrityError as e:
-                DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
-
-            except sqlite3.OperationalError as e:
-                DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
+        self.insert(table_name = spdbnm.ALBUMS_TRACKS.TBL_NAME,
+                    values = albums_tracks_values,
+                    columns_names = [spdbnm.ALBUMS_TRACKS.ALBUM_ID,
+                                     spdbnm.ALBUMS_TRACKS.TRACK_ID],
+                    commit = commit)
 
     def insert_linked_tracks(self, linked_track_values: dict | list[dict], commit: bool = False) -> None:
         """
@@ -624,264 +569,37 @@ class DB:
         Returns:
             None.
         """
-        if linked_track_values is None:
-            log.write("WARNING: " + log.EMPTY_VALUES.format('Linked Track'))
-
-        else:
-            try:
-                # if len(linked_track_values) == 2:
-                query = f"""INSERT OR REPLACE INTO {spdbnm.TRACKS_LINKED_FROM.TBL_NAME} 
-                ({spdbnm.TRACKS_LINKED_FROM.FROM_ID},
-                {spdbnm.TRACKS_LINKED_FROM.RELINKED_ID})
-
-                VALUES (
-                :{spdbnm.TRACKS_LINKED_FROM.FROM_ID},
-                :{spdbnm.TRACKS_LINKED_FROM.RELINKED_ID});"""
-
-                match linked_track_values:
-                    case dict() as linked_track_values:
-                        self.cursor.execute(query, linked_track_values)
-
-                    case list() as linked_track_values:
-                        self.cursor.executemany(query, linked_track_values)
-
-                if commit:
-                    self.commit()
-
-            except sqlite3.IntegrityError as e:
-                DB.eprint(log.CANNOT_INSERT.format(str(linked_track_values)))
-                DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
-
-            except sqlite3.OperationalError as e:
-                DB.eprint(log.CANNOT_INSERT.format(str(linked_track_values)))
-                DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
-
-    # region Single record
-
-    # def insert_track_full(self, track: tk.model.FullTrack = None) -> None:
-    #     """
-    #     Insert a full track into the relevant DB tables.
-    # 
-    #     Does not commit.
-    # 
-    #     Parameters:
-    #         track: A dict or a FullTrack object with values to insert.
-    # 
-    #     Returns:
-    #         None.
-    #     """
-    #     self.insert_tracks(DB.get_track_for_insert(track))
-    #     self.insert_albums(DB.get_album_for_insert(track))
-    #     self.insert_linked_tracks(DB.get_linked_from_for_insert(track))
-
-    # def insert_track(self, track_values: dict) -> None:
-    #     """
-    #     Insert a Track's values to the **Tracks** DB-table.
-    #
-    #     Does not commit.
-    #
-    #     Parameters:
-    #         track_values: Dictionary with the desired Track's values to insert.
-    #
-    #     Returns:
-    #         None.
-    #     """
-    #     if track_values is None:
-    #         log.write("WARNING: " + log.EMPTY_VALUES.format('Track'))
-    #
-    #     else:
-    #         try:
-    #             query = f"""INSERT OR REPLACE INTO {spdbnm.TRACKS.TBL_NAME} (
-    #             {spdbnm.TRACKS.ID},
-    #             {spdbnm.TRACKS.HREF},
-    #             {spdbnm.TRACKS.URI},
-    #             {spdbnm.TRACKS.DISC_NUMBER},
-    #             {spdbnm.TRACKS.DURATION_MS},
-    #             {spdbnm.TRACKS.EXPLICIT},
-    #             {spdbnm.TRACKS.NAME},
-    #             {spdbnm.TRACKS.PREVIEW_URL},
-    #             {spdbnm.TRACKS.TRACK_NUMBER},
-    #             {spdbnm.TRACKS.IS_LOCAL},
-    #             {spdbnm.TRACKS.POPULARITY},
-    #             {spdbnm.TRACKS.IS_PLAYABLE})
-    #
-    #             VALUES (
-    #             :{spdbnm.TRACKS.ID},
-    #             :{spdbnm.TRACKS.HREF},
-    #             :{spdbnm.TRACKS.URI},
-    #             :{spdbnm.TRACKS.DISC_NUMBER},
-    #             :{spdbnm.TRACKS.DURATION_MS},
-    #             :{spdbnm.TRACKS.EXPLICIT},
-    #             :{spdbnm.TRACKS.NAME},
-    #             :{spdbnm.TRACKS.PREVIEW_URL},
-    #             :{spdbnm.TRACKS.TRACK_NUMBER},
-    #             :{spdbnm.TRACKS.IS_LOCAL},
-    #             :{spdbnm.TRACKS.POPULARITY},
-    #             :{spdbnm.TRACKS.IS_PLAYABLE});"""
-    #
-    #             self.cursor.execute(query, track_values)
-    #
-    #         except sqlite3.IntegrityError as e:
-    #             DB.eprint(log.CANNOT_INSERT.format(str(track_values)))
-    #             DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
-    #
-    #         except sqlite3.OperationalError as e:
-    #             DB.eprint(log.CANNOT_INSERT.format(str(track_values)))
-    #             DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
-
-    # def insert_artist(self, artist_values: dict) -> None:
-    #     """
-    #     Insert an Artist's values to the **Artists** DB-table.
-    #
-    #     Does not commit.
-    #
-    #     Parameters:
-    #         artist_values: Dictionary with the desired Artist's values to insert.
-    #
-    #     Returns:
-    #         None.
-    #     """
-    #     if artist_values is None:
-    #         log.write("WARNING: " + log.EMPTY_VALUES.format('Artist'))
-    #
-    #     else:
-    #         try:
-    #             query = f"""INSERT OR REPLACE INTO {spdbnm.ARTISTS.TBL_NAME}
-    #             ({spdbnm.ARTISTS.ID},
-    #             {spdbnm.ARTISTS.HREF},
-    #             {spdbnm.ARTISTS.URI},
-    #             {spdbnm.ARTISTS.NAME},
-    #             {spdbnm.ARTISTS.TOTAL_FOLLOWERS},
-    #             {spdbnm.ARTISTS.POPULARITY})
-    #
-    #             VALUES (
-    #             :{spdbnm.ARTISTS.ID},
-    #             :{spdbnm.ARTISTS.HREF},
-    #             :{spdbnm.ARTISTS.URI},
-    #             :{spdbnm.ARTISTS.NAME},
-    #             :{spdbnm.ARTISTS.TOTAL_FOLLOWERS},
-    #             :{spdbnm.ARTISTS.POPULARITY});"""
-    #
-    #             self.cursor.execute(query, artist_values)
-    #
-    #         except sqlite3.IntegrityError as e:
-    #             DB.eprint(log.CANNOT_INSERT.format(str(artist_values)))
-    #             DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
-    #
-    #         except sqlite3.OperationalError as e:
-    #             DB.eprint(log.CANNOT_INSERT.format(str(artist_values)))
-    #             DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
-
-    # def insert_album(self, album_values: dict) -> None:
-    #     """
-    #     Insert an Album's values to the **Albums** DB-table.
-    # 
-    #     Does not commit.
-    # 
-    #     Parameters:
-    #         album_values: Dictionary with the desired Album's values to insert.
-    # 
-    #     Returns:
-    #         None.
-    #     """
-    #     if album_values is None:
-    #         log.write("WARNING: " + log.EMPTY_VALUES.format('Album'))
-    # 
-    #     else:
-    #         try:
-    #             query = f"""INSERT OR REPLACE INTO {spdbnm.ALBUMS.TBL_NAME} 
-    #             ({spdbnm.ALBUMS.ID},
-    #             {spdbnm.ALBUMS.HREF},
-    #             {spdbnm.ALBUMS.URI},
-    #             {spdbnm.ALBUMS.NAME},
-    #             {spdbnm.ALBUMS.ALBUM_TYPE},
-    #             {spdbnm.ALBUMS.TOTAL_TRACKS},
-    #             {spdbnm.ALBUMS.RELEASE_DATE},
-    #             {spdbnm.ALBUMS.RELEASE_DATE_PRECISION})
-    #             
-    #             VALUES (
-    #             :{spdbnm.ALBUMS.ID},
-    #             :{spdbnm.ALBUMS.HREF},
-    #             :{spdbnm.ALBUMS.URI},
-    #             :{spdbnm.ALBUMS.NAME},
-    #             :{spdbnm.ALBUMS.ALBUM_TYPE},
-    #             :{spdbnm.ALBUMS.TOTAL_TRACKS},
-    #             :{spdbnm.ALBUMS.RELEASE_DATE},
-    #             :{spdbnm.ALBUMS.RELEASE_DATE_PRECISION});"""
-    # 
-    #             self.cursor.execute(query, album_values)
-    # 
-    #         except sqlite3.IntegrityError as e:
-    #             DB.eprint(log.CANNOT_INSERT.format(str(album_values)))
-    #             DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
-    # 
-    #         except sqlite3.OperationalError as e:
-    #             DB.eprint(log.CANNOT_INSERT.format(str(album_values)))
-    #             DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
-
-    # @deprecated(details = """Tables were split into Model tables and Model-to-Model linkage tables.
-    # Please use method insert_albums_of_artists.""")
-    # def insert_artists_album(self, artists_albums_values: list) -> None:
-    #     """Insert artist values to DB. Does not commit.
-    #     Tables were split into Model tables and Model-to-Model linkage tables.
-    #     Please use method ``insert_albums_of_artists``."""
-    #     if artists_albums_values is None:
-    #         log.write("WARNING: " + log.EMPTY_VALUES.format('Artist Albums'))
-    #
-    #     else:
-    #         for artist_album in artists_albums_values:
-    #             try:
-    #                 self.cursor.execute(f"""INSERT OR REPLACE INTO artists_albums (pk_id,
-    #                 href,
-    #                 uri,
-    #                 name,
-    #                 fk_album_id)
-    #                 VALUES {str(artist_album)}""")
-    #
-    #             except sqlite3.IntegrityError as e:
-    #                 DB.eprint(log.CANNOT_INSERT.format(str(artist_album)))
-    #                 DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
-    #
-    #             except sqlite3.OperationalError as e:
-    #                 DB.eprint(log.CANNOT_INSERT.format(str(artist_album)))
-    #                 DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
-
-    # @deprecated(details = """Tables were split into Model tables and Model-to-Model linkage tables.
-    #     Please use method insert_tracks_of_artists.""")
-    # def insert_artists_track(self, artists_tracks_values: list) -> None:
-    #     """Insert artist values to DB. Does not commit.
-    #     Tables were split into Model tables and Model-to-Model linkage tables.
-    #     Please use method ``insert_tracks_of_artists``."""
-    #     if artists_tracks_values is None:
-    #         log.write("WARNING: " + log.EMPTY_VALUES.format('Artist Tracks'))
-    #
-    #     else:
-    #         for artist_track in artists_tracks_values:
-    #             try:
-    #                 self.cursor.execute(f"""INSERT OR REPLACE INTO artists_tracks (pk_id,
-    #                 href,
-    #                 uri,
-    #                 name,
-    #                 fk_track_id)
-    #                 VALUES {str(artist_track)}""")
-    #
-    #             except sqlite3.IntegrityError as e:
-    #                 DB.eprint(log.CANNOT_INSERT.format(str(artist_track)))
-    #                 DB.eprint(log.DB_INTEGRITY_ERROR.format(e))
-    #
-    #             except sqlite3.OperationalError as e:
-    #                 DB.eprint(log.CANNOT_INSERT.format(str(artist_track)))
-    #                 DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
-
-    # endregion Single record
+        self.insert(table_name = spdbnm.TRACKS_LINKED_FROM.TBL_NAME,
+                    values = linked_track_values,
+                    columns_names = [spdbnm.TRACKS_LINKED_FROM.FROM_ID,
+                                     spdbnm.TRACKS_LINKED_FROM.RELINKED_ID],
+                    commit = commit)
 
     # endregion Insertion Logic
 
     # region Selection Logic
 
     def get_listen_history_df(self) -> pd.DataFrame:
-        query = None
+        query = f"""SELECT
+                {spdbnm.TRACKS_LISTEN_HISTORY.USERNAME},
+                {spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP},
+                {spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID},
+                {spdbnm.TRACKS_LISTEN_HISTORY.MS_PLAYED},
+                {spdbnm.TRACKS_LISTEN_HISTORY.REASON_START},
+                {spdbnm.TRACKS_LISTEN_HISTORY.REASON_END},
+                {spdbnm.TRACKS_LISTEN_HISTORY.SKIPPED},
+                {spdbnm.TRACKS_LISTEN_HISTORY.PLATFORM},
+                {spdbnm.TRACKS_LISTEN_HISTORY.CONN_COUNTRY},
+                {spdbnm.TRACKS_LISTEN_HISTORY.URI},
+                {spdbnm.TRACKS_LISTEN_HISTORY.SHUFFLE},
+                {spdbnm.TRACKS_LISTEN_HISTORY.OFFLINE},
+                {spdbnm.TRACKS_LISTEN_HISTORY.INCOGNITO_MODE}
+                FROM {spdbnm.TRACKS_LISTEN_HISTORY.VIEW_NAME}
+                ORDER BY {spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP} ASC;
+                """
 
-        self.cursor.execute(query)
+        listen_history_df = pd.read_sql_query(sql = query, con = self.connection)
+
+        return listen_history_df
 
     # endregion Selection Logic

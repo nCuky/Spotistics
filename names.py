@@ -3,14 +3,14 @@ from dataclasses import dataclass
 
 @dataclass(frozen = True)
 class Spdt:
-    TIMESTAMP = 'ts'
+    TIMESTAMP = 'time_stamp'
     MS_PLAYED = 'ms_played'
     ALBUM_ARTIST_NAME = 'album_artist_name'
     ALBUM_NAME = 'album_name'
     TRACK_NAME = 'track_name'
     TRACK_ID = 'track_id'
     TRACK_KNOWN_ID = 'track_known_id'
-    TRACK_URI = 'spotify_track_uri'
+    TRACK_URI = 'uri'
     EPISODE_NAME = 'episode_name'
     EPISODE_SHOW_NAME = 'episode_show_name'
     EPISODE_URI = 'spotify_episode_uri'
@@ -66,8 +66,11 @@ class Spdb:
         RELEASE_DATE = 'release_date'
         RELEASE_DATE_PRECISION = 'release_date_precision'
         ALBUM_TYPE = 'album_type'
+        IS_AVAILABLE = 'is_available'
         HREF = 'href'
         URI = 'uri'
+        CREATED_AT = 'created_at'
+        UPDATED_AT = 'updated_at'
 
     @dataclass(frozen = True)
     class ARTISTS:
@@ -79,12 +82,18 @@ class Spdb:
         POPULARITY = 'popularity'
         HREF = 'href'
         URI = 'uri'
+        CREATED_AT = 'created_at'
+        UPDATED_AT = 'updated_at'
 
     @dataclass(frozen = True)
     class ARTISTS_ALBUMS:
         TBL_NAME = 'artists_albums'
+
         ARTIST_ID = 'artist_id'
         ALBUM_ID = 'album_id'
+        ALBUM_GROUP = 'album_group'
+        CREATED_AT = 'created_at'
+        UPDATED_AT = 'updated_at'
 
     @dataclass(frozen = True)
     class ALBUMS_TRACKS:
@@ -92,6 +101,8 @@ class Spdb:
 
         ALBUM_ID = 'album_id'
         TRACK_ID = 'track_id'
+        CREATED_AT = 'created_at'
+        UPDATED_AT = 'updated_at'
 
     @dataclass(frozen = True)
     class GENRES:
@@ -99,6 +110,8 @@ class Spdb:
 
         ID = 'genre_id'
         NAME = 'name'
+        CREATED_AT = 'created_at'
+        UPDATED_AT = 'updated_at'
 
     @dataclass(frozen = True)
     class ARTISTS_GENRES:
@@ -106,6 +119,8 @@ class Spdb:
 
         ARTIST_ID = 'artist_id'
         GENRE_ID = 'genre_id'
+        CREATED_AT = 'created_at'
+        UPDATED_AT = 'updated_at'
 
     @dataclass(frozen = True)
     class TRACKS_LINKED_FROM:
@@ -113,10 +128,13 @@ class Spdb:
 
         FROM_ID = 'linked_from_id'
         RELINKED_ID = 'track_known_id'
+        CREATED_AT = 'created_at'
+        UPDATED_AT = 'updated_at'
 
     @dataclass(frozen = True)
     class TRACKS_LISTEN_HISTORY:
         TBL_NAME = 'tracks_listen_history'
+        VIEW_NAME = 'v_tracks_listen_history'
 
         TIMESTAMP = 'time_stamp'
         USERNAME = 'username'

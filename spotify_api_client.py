@@ -279,7 +279,7 @@ class SpotifyAPIClient:
 
     def get_full_tracks(self, tracks: pd.Series) -> tk.model.ModelList[tk.model.FullTrack]:
         """
-        For each track in the given series, fetches its :class:`tk.model.FullTrack` object from the API.
+        For each Track ID in the given series, fetches its :class:`tk.model.FullTrack` object from the API.
 
         Parameters:
             tracks: All the required tracks' ID's.
@@ -298,7 +298,8 @@ class SpotifyAPIClient:
             log.write(message = log.FETCHING_TRACKS_ATTRS.format(unique_tracks.size))
 
             try:
-                # Calling the API to get FullTracks for the given tracks' ID's:
+                # Calling the API to get FullTracks for the given tracks' ID's.
+                # Parameter `market` is needed here, to get the Linked Track for each track:
                 full_tracks = self.client.tracks(track_ids = unique_tracks_list,
                                                  market = self.client.current_user().country)
 
@@ -311,6 +312,48 @@ class SpotifyAPIClient:
                 raise tk.ServiceUnavailable(message = message)
 
         return full_tracks
+
+    def get_full_albums(self, albums: pd.Series | set) -> tk.model.ModelList[tk.model.FullAlbum]:
+        """
+        For each Album ID in the given collection, fetches its :class:`tk.model.FullAlbum` object from the API.
+
+        Parameters:
+            albums: All the required albums' ID's.
+
+        Returns:
+            Tekore ModelList of FullAlbums, for the given albums series.
+
+        Raises:
+            tk.ServiceUnavailable: if Spotify's API service is unavailable.
+        """
+        unique_albums_list = []
+        full_albums = None
+
+        match albums:
+            case pd.Series() as albums:
+                unique_albums = albums.dropna().unique()
+                unique_albums_list = unique_albums.tolist()
+
+            case set() as albums:
+                unique_albums_list = list(albums)
+
+        with self.client.token_as(self.user_token):
+            log.write(message = log.FETCHING_ALBUMS_ATTRS.format(len(unique_albums_list)))
+
+            try:
+                # Calling the API to get FullAlbums for the given albums' ID's.
+                # Parameter `market` is not sent, in order to get the Available Markets for each album:
+                full_albums = self.client.albums(album_ids = unique_albums_list)
+
+                log.write(message = log.ALBUMS_ATTRS_FETCHED.format(len(full_albums)))
+
+            except tk.ServiceUnavailable as ex:
+                message = log.API_SERVICE_UNAVAILABLE.format(ex)
+                log.write(message = message)
+
+                raise tk.ServiceUnavailable(message = message)
+
+        return full_albums
 
     def get_track_known_id_map(self,
                                full_tracks: tk.model.ModelList[tk.model.FullTrack],
