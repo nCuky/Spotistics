@@ -8,10 +8,15 @@ WRITING_FILE = "Now writing file: {0}..."
 FILE_WRITTEN = "File written successfully: {0}"
 
 # Fetching:
-FETCHING_TRACKS_ATTRS = "Fetching FullTrack attributes for {0} tracks (might take a while)..."
-TRACKS_ATTRS_FETCHED = "FullTrack attributes were successfully fetched for {0} tracks."
-FETCHING_ALBUMS_ATTRS = "Fetching FullAlbum attributes for {0} albums (might take a while)..."
-ALBUMS_ATTRS_FETCHED = "FullAlbum attributes were successfully fetched for {0} albums."
+FETCHING_ATTRS_FOR = "Fetching {0} attributes for {1} {2} (might take a while)..."
+ATTRS_FETCHED_FOR = "{0} attributes were successfully fetched for {1} {2}."
+
+FETCHING_TRACKS_ATTRS = FETCHING_ATTRS_FOR.format('FullTrack', '{0}', 'tracks')
+TRACKS_ATTRS_FETCHED = ATTRS_FETCHED_FOR.format('FullTrack', '{0}', 'tracks')
+FETCHING_ARTISTS_ATTRS = FETCHING_ATTRS_FOR.format('FullArtist', '{0}', 'artists')
+ARTISTS_ATTRS_FETCHED = ATTRS_FETCHED_FOR.format('FullArtist', '{0}', 'artists')
+FETCHING_ALBUMS_ATTRS = FETCHING_ATTRS_FOR.format('FullAlbum', '{0}', 'albums')
+ALBUMS_ATTRS_FETCHED = ATTRS_FETCHED_FOR.format('FullAlbum', '{0}', 'albums')
 FETCHING_ARTISTS_ALBUMS_ATTRS = "Fetching all albums for {0} artists (might take a while)..."
 ARTISTS_ALBUMS_ATTRS_FETCHED = "All albums were successfully fetched for {0} artists."
 FETCHING_RECENTLY_PLAYED = "Fetching the current user's Recently Played Tracks..."

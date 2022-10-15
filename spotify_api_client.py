@@ -2,6 +2,7 @@ import pandas as pd
 import tekore as tk
 from dataclasses import dataclass
 import log
+import sp_utils as ut
 
 
 @dataclass(frozen = True)
@@ -277,25 +278,25 @@ class SpotifyAPIClient:
     #     #
     # return pd.DataFrame(data = tracks_with_features)
 
-    def get_full_tracks(self, tracks: pd.Series) -> tk.model.ModelList[tk.model.FullTrack]:
+    def get_full_tracks(self, tracks_ids: pd.Series | set | list) -> tk.model.ModelList[tk.model.FullTrack]:
         """
-        For each Track ID in the given series, fetches its :class:`tk.model.FullTrack` object from the API.
+        For each Track ID in the given collection, fetches its :class:`tk.model.FullTrack` object from the API.
 
         Parameters:
-            tracks: All the required tracks' ID's.
+            tracks_ids: All the required tracks' ID's.
 
         Returns:
-            Tekore ModelList of FullTracks, for the given tracks series.
+            Tekore ModelList of FullTracks, for the given tracks collection.
 
         Raises:
             tk.ServiceUnavailable: if Spotify's API service is unavailable.
         """
-        unique_tracks = tracks.dropna().unique()
-        unique_tracks_list = unique_tracks.tolist()
+        unique_tracks_list = ut.get_unique_vals_list(tracks_ids)
+
         full_tracks = None
 
         with self.client.token_as(self.user_token):
-            log.write(message = log.FETCHING_TRACKS_ATTRS.format(unique_tracks.size))
+            log.write(message = log.FETCHING_TRACKS_ATTRS.format(len(unique_tracks_list)))
 
             try:
                 # Calling the API to get FullTracks for the given tracks' ID's.
@@ -313,12 +314,45 @@ class SpotifyAPIClient:
 
         return full_tracks
 
-    def get_full_albums(self, albums: pd.Series | set | list) -> tk.model.ModelList[tk.model.FullAlbum]:
+    def get_full_artists(self, artists_ids: pd.Series | set | list) -> tk.model.ModelList[tk.model.FullArtist]:
+        """
+        For each Artist ID in the given collection, fetches its :class:`tk.model.FullArtist` object from the API.
+
+        Parameters:
+            artists_ids: All the required artists' ID's.
+
+        Returns:
+            Tekore ModelList of FullArtists, for the given artists collection.
+
+        Raises:
+            tk.ServiceUnavailable: if Spotify's API service is unavailable.
+        """
+        unique_artists_list = ut.get_unique_vals_list(artists_ids)
+        full_artists = None
+
+        with self.client.token_as(self.user_token):
+            log.write(message = log.FETCHING_ARTISTS_ATTRS.format(len(unique_artists_list)))
+
+            try:
+                # Calling the API to get FullArtists for the given artists' ID's.
+                full_artists = self.client.artists(artist_ids = unique_artists_list)
+
+                log.write(message = log.ARTISTS_ATTRS_FETCHED.format(len(full_artists)))
+
+            except tk.ServiceUnavailable as ex:
+                message = log.API_SERVICE_UNAVAILABLE.format(ex)
+                log.write(message = message)
+
+                raise tk.ServiceUnavailable(message = message)
+
+        return full_artists
+
+    def get_full_albums(self, albums_ids: pd.Series | set | list) -> tk.model.ModelList[tk.model.FullAlbum]:
         """
         For each Album ID in the given collection, fetches its :class:`tk.model.FullAlbum` object from the API.
 
         Parameters:
-            albums: All the required albums' ID's.
+            albums_ids: All the required albums' ID's.
 
         Returns:
             Tekore ModelList of FullAlbums, for the given albums series.
@@ -326,19 +360,8 @@ class SpotifyAPIClient:
         Raises:
             tk.ServiceUnavailable: if Spotify's API service is unavailable.
         """
-        unique_albums_list = []
+        unique_albums_list = ut.get_unique_vals_list(albums_ids)
         full_albums = None
-
-        match albums:
-            case pd.Series() as albums:
-                unique_albums = albums.dropna().unique()
-                unique_albums_list = unique_albums.tolist()
-
-            case set() as albums:
-                unique_albums_list = list(albums)
-
-            case list() as albums:
-                unique_albums_list = albums
 
         with self.client.token_as(self.user_token):
             log.write(message = log.FETCHING_ALBUMS_ATTRS.format(len(unique_albums_list)))
@@ -361,8 +384,13 @@ class SpotifyAPIClient:
     def get_artists_albums(self,
                            artists_ids: pd.Series | set | list) -> dict:
         """
-        For each Artist ID in the given collection, fetches all of their objects from the
-        API.
+        For each Artist ID in the given collection, fetches all of their albums from the API.
+
+        **Note:** This method is **very inefficient** and can **take a very long time to finish**.
+
+        This is because the Spotify API only allows to get the albums of a single artist in a single API call.
+        At the time of development, there is no option to batch-fetch the albums of multiple artists in the same call,
+        and it took me 20 minutes to fetch the albums of 6700 artists.
 
         Parameters:
             artists_ids: ID's of all the required artists.

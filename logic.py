@@ -1,16 +1,13 @@
-import names
 from spotify_api_client import SpotifyAPIClient as spapi
 import spotify_data_set as spdt
-from datetime import datetime as dt
-import pandas as pd
-import numpy as np
-import tekore as tk
-import log
-# import pyspark as sk
+import sp_utils as utl
 import db
 from names import Spdb as spdbnm
 from names import Spdt as spdtnm
+import pandas as pd
+import tekore as tk
 import pickle
+# import pyspark as sk
 
 
 class Logic:
@@ -25,48 +22,6 @@ class Logic:
         token_file.close()
 
         return token_file_text
-
-    @staticmethod
-    def write_df_to_file(df: pd.DataFrame, file_name: str) -> None:
-        """
-        Writes a given DataFrame to a file.
-
-        Parameters:
-            df: DataFrame to write to a file.
-
-            file_name: Name of the desired file to write (without preceding path).
-
-        Returns:
-            None.
-        """
-        file_path = 'data/personal_data/prepared/' + file_name.format(dt.now().strftime("%Y-%m-%d_%H-%M-%S"))
-        log.write(log.WRITING_FILE.format(file_path))
-        # Writing an Excel Spreadsheet doesn't work yet.
-        df.to_csv(path_or_buf = file_path,
-                  encoding = 'utf-8-sig',  # UTF-8, explicitly signed with a BOM at the start of the file
-                  index = False)
-        log.write(log.FILE_WRITTEN.format(file_path))
-
-    @staticmethod
-    def get_unique_values(dicts: list[dict]) -> list[dict] | None:
-        """
-        Keep only the unique **dictionaries** in a list of dicts. Each whole dict is taken as a single "value" to
-        compare to others.
-
-        Each dict in the given list **must be flat**, i.e. not an object or a nested dict, because
-        they are not supported here.
-
-        Parameters:
-            dicts (list[dict]): List of flat dictionaries.
-
-        Returns:
-            list[dict] | None: List of only the unique dictionaries, compared by all the values of each dict,
-                or None if any dict contains an object or a nested dict.
-        """
-        # Taken from https://stackoverflow.com/a/19804098/6202667
-        unique_dict_list = list(map(dict, set(tuple(d.items()) for d in dicts)))
-
-        return unique_dict_list
 
     @staticmethod
     def clean_json_for_public_repo():
@@ -121,7 +76,7 @@ class Logic:
             spdtnm.SONG_KEY).mean().assign(
             duration_ms = only_duration)
 
-        Logic.write_df_to_file(my_results, "listen_data_by_key.csv")
+        utl.write_df_to_file(my_results, "listen_data_by_key.csv")
 
     def calc_listen_data_mean_key(self) -> None:
         """
@@ -160,7 +115,7 @@ class Logic:
         # Writing to CSV file:
         track_file_name = 'all_tracks_raw_{0}.csv'
 
-        Logic.write_df_to_file(track_data, track_file_name)
+        utl.write_df_to_file(track_data, track_file_name)
 
     def collect_data_and_save(self, to_csv_also: bool = False):
         """
@@ -174,7 +129,7 @@ class Logic:
             None.
         """
         try:
-            full_tracks_mdlist = self.my_spapi.get_full_tracks(tracks = self.my_spdt.get_tracks_listen_data()[
+            full_tracks_mdlist = self.my_spapi.get_full_tracks(tracks_ids = self.my_spdt.get_tracks_listen_data()[
                 spdtnm.TRACK_ID])
 
             self.save_full_tracks_to_db(full_tracks_mdlist)
@@ -183,7 +138,7 @@ class Logic:
                 # Writing the listen history into a CSV file:
                 track_file_name = 'known_tracks_{0}.csv'
 
-                Logic.write_df_to_file(self.my_spdt.get_tracks_listen_data(), track_file_name)
+                utl.write_df_to_file(self.my_spdt.get_tracks_listen_data(), track_file_name)
 
         except tk.ServiceUnavailable as ex:
             return
@@ -292,18 +247,17 @@ class Logic:
                     #      (full_track.album.album_group != tk.model.AlbumGroup.appears_on)):
                     artist_album_dict = {spdbnm.ARTISTS_ALBUMS.ARTIST_ID  : artist.id,
                                          spdbnm.ARTISTS_ALBUMS.ALBUM_ID   : full_track.album.id,
-                                         spdbnm.ARTISTS_ALBUMS.ALBUM_GROUP: full_track.album.album_group.value if
-                                         full_track.album.album_group is not None else None}
+                                         spdbnm.ARTISTS_ALBUMS.ALBUM_GROUP: None}
 
                     all_artists_albums_list.append(artist_album_dict)
 
         # Keeping only the unique values in each list:
-        all_tracks_list_unq = Logic.get_unique_values(all_tracks_list)
-        all_linked_tracks_list_unq = Logic.get_unique_values(all_linked_tracks_list)
-        all_artists_list_unq = Logic.get_unique_values(all_artists_list)
-        all_albums_list_unq = Logic.get_unique_values(all_albums_list)
-        all_albums_tracks_list_unq = Logic.get_unique_values(all_albums_tracks_list)
-        all_artists_albums_list_unq = Logic.get_unique_values(all_artists_albums_list)
+        all_tracks_list_unq = utl.get_unique_dicts(all_tracks_list)
+        all_linked_tracks_list_unq = utl.get_unique_dicts(all_linked_tracks_list)
+        all_artists_list_unq = utl.get_unique_dicts(all_artists_list)
+        all_albums_list_unq = utl.get_unique_dicts(all_albums_list)
+        all_albums_tracks_list_unq = utl.get_unique_dicts(all_albums_tracks_list)
+        all_artists_albums_list_unq = utl.get_unique_dicts(all_artists_albums_list)
 
         # Filling attribute `is_available` for each album:
         full_albums = self.my_spapi.get_full_albums(all_albums_ids)
@@ -313,8 +267,18 @@ class Logic:
         for i, full_album in enumerate(all_albums_list_unq):
             all_albums_list_unq[i][spdbnm.ALBUMS.IS_AVAILABLE] = albums_availability[full_album[spdbnm.ALBUMS.ID]]
 
-        # Filling attribute `album_group` for each album-artist:
-        full_artists_albums = self.my_spapi.get_artists_albums(all_artists_ids)
+        full_artists = self.my_spapi.get_full_artists(all_artists_ids)
+
+        # # Filling attribute `album_group` for each album-artist. This was very performance-heavy and yielded results
+        # # that were not consistent enough, so I deprecated it:
+        # full_artists_albums = self.my_spapi.get_artists_albums(all_artists_ids)
+        #
+        # for i, artist_album in enumerate(all_artists_albums_list_unq):
+        #     all_artists_albums_list_unq[i][spdbnm.ARTISTS_ALBUMS.ALBUM_GROUP] = None
+        #
+        #     for item in full_artists_albums[artist_album[spdbnm.ARTISTS_ALBUMS.ARTIST_ID]].items:
+        #         if item.id == artist_album[spdbnm.ARTISTS_ALBUMS.ALBUM_ID]:
+        #             all_artists_albums_list_unq[i][spdbnm.ARTISTS_ALBUMS.ALBUM_GROUP] = item.album_group.value
 
         # Inserting all values to the corresponding DB-tables:
         self.my_db.insert_listen_history(self.my_spdt.get_tracks_listen_data())
