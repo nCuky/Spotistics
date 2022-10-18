@@ -128,6 +128,17 @@ class Spdb:
 
         FROM_ID = 'linked_from_id'
         RELINKED_ID = 'track_known_id'
+        IS_LINKED = 'is_linked'
+        CREATED_AT = 'created_at'
+        UPDATED_AT = 'updated_at'
+
+    @dataclass(frozen = True)
+    class ALBUMS_LINKED_FROM:
+        TBL_NAME = 'linked_albums'
+
+        FROM_ID = 'linked_from_id'
+        RELINKED_ID = 'album_known_id'
+        IS_LINKED = 'is_linked'
         CREATED_AT = 'created_at'
         UPDATED_AT = 'updated_at'
 

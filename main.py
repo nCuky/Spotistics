@@ -9,12 +9,14 @@ import seaborn as sns
 from names import Spdt as spdt
 
 # Initializing the application:
-my_lg = lg(listen_history_from = 'json')
+my_lg = lg(listen_history_from = 'db')
 my_lg.collect_data_and_save()
 
-tracks_count = my_lg.count_unique_tracks().sort_values(by = spdt.TIMES_LISTENED, ascending = False)
-
 # region Plotting
+
+# region Total Listens by Artist
+
+tracks_count = my_lg.count_unique_tracks().sort_values(by = spdt.TIMES_LISTENED, ascending = False)
 
 total_listens_by_artist = tracks_count.groupby(by = spdt.ALBUM_ARTIST_NAME, as_index = True).agg(
     total_listened = (spdt.TIMES_LISTENED, 'sum')).sort_values('total_listened', ascending = False).head(50)
@@ -27,6 +29,8 @@ plt_listens_by_artist.set(xlabel = "Total times listened",
                           title = "My top 50 artists by number of listens")
 plt_listens_by_artist.xaxis.set_major_locator(ticker.MultipleLocator(500))
 plt_listens_by_artist.grid(b = True, axis = 'x')
+
+# endregion Total Listens by Artist
 
 sns.set_style('darkgrid')
 plt.tight_layout()

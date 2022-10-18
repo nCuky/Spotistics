@@ -254,7 +254,7 @@ CREATE VIEW IF NOT EXISTS v_tracks
 CREATE VIEW IF NOT EXISTS v_artists_albums
 	AS SELECT artists_albums.artist_id,
 			  artists.name AS artist_name,
-			  artists_albums.album_group,
+--			  artists_albums.album_group,
 			  artists_albums.album_id,
 			  albums.name AS album_name,
 			  albums.is_available,
@@ -263,7 +263,7 @@ CREATE VIEW IF NOT EXISTS v_artists_albums
 	FROM artists_albums
 	INNER JOIN artists ON artists.artist_id = artists_albums.artist_id 
 	INNER JOIN albums ON albums.album_id = artists_albums.album_id
-	ORDER BY artists_albums.artist_id ASC, 
+	ORDER BY artist_name ASC, 
 			 artists_albums.album_group ASC, 
 			 album_name ASC;
 								 
@@ -277,6 +277,29 @@ CREATE VIEW IF NOT EXISTS v_albums_tracks
 	FROM albums_tracks
 	INNER JOIN linked_albums ON linked_albums.linked_from_id = albums_tracks.album_id
 	INNER JOIN linked_tracks ON linked_tracks.linked_from_id = albums_tracks.track_id;
+
+CREATE VIEW IF NOT EXISTS v_linked_tracks
+	AS SELECT 	linked_tracks.linked_from_id,
+				linked_tracks.track_known_id,
+				linked_tracks.is_linked,
+				tracks.name,
+				tracks.duration_ms,
+				tracks.disc_number,
+				tracks.track_number
+	FROM linked_tracks
+	LEFT OUTER JOIN tracks ON tracks.track_id = linked_tracks.track_known_id 
+	ORDER BY name ASC,
+			 track_known_id ASC;
+
+CREATE VIEW IF NOT EXISTS v_linked_albums
+	AS SELECT 	linked_albums.linked_from_id,
+				linked_albums.album_known_id,
+				linked_albums.is_linked,
+				albums.name
+	FROM linked_albums
+	LEFT OUTER JOIN albums ON albums.album_id = linked_albums.album_known_id  
+	ORDER BY name ASC,
+			 album_known_id ASC;
 								 
 CREATE VIEW IF NOT EXISTS v_tracks_listen_history 
 	AS SELECT tracks_listen_history.username,

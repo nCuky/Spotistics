@@ -451,22 +451,24 @@ class SpotifyAPIClient:
         Returns:
             Dictionary mapping each given ID to its 'known' ID (can be the same ID or different).
         """
+        tracks_known_ids_map = {}
+
         try:
             _full_tracks = full_tracks if full_tracks is not None else self.get_full_tracks(tracks)
-            tracks_known_ids_map = {}
 
             for track in _full_tracks:
-                try:
-                    if (track is not None) and getattr(track, 'linked_from') is not None:
-                        tracks_known_ids_map[track.linked_from.id] = track.id
+                if track is not None:
+                    try:
+                        if track.linked_from is None:
+                            tracks_known_ids_map[track.id] = track.id
 
-                    else:
+                        else:
+                            tracks_known_ids_map[track.linked_from.id] = track.id
+
+                    except AttributeError:
                         tracks_known_ids_map[track.id] = track.id
 
-                except AttributeError:
-                    tracks_known_ids_map[track.id] = track.id
-
-            return tracks_known_ids_map
-
         except tk.ServiceUnavailable as ex:
-            return
+            log.write(log.API_SERVICE_UNAVAILABLE.format(ex))
+
+        return tracks_known_ids_map

@@ -1,7 +1,7 @@
 import pandas as pd
 import log
 from datetime import datetime as dt
-
+# from typing import Set, List, Dict
 
 @staticmethod
 def write_df_to_file(df: pd.DataFrame, file_name: str) -> None:
@@ -43,7 +43,7 @@ def get_unique_vals_list(values: pd.Series | set | list) -> list:
             unique_values = list(values)
 
         case list() as values:
-            unique_values = values
+            unique_values = list(set(values))
 
         case _:
             unique_values = []
@@ -71,3 +71,31 @@ def get_unique_dicts(dicts: list[dict]) -> list[dict] | None:
     unique_dict_list = list(map(dict, set(tuple(d.items()) for d in dicts)))
 
     return unique_dict_list
+
+
+@staticmethod
+def add_to_mapping_of_sets(mapping: dict,
+                           key: str,
+                           value: str) -> None:
+    """
+    In a given dictionary of sets, searches for the required key, and adds the given string value as the next item
+    to that key.
+    If the key is not found, it is created, and for it a new set with the given value as its first item is put.
+
+    This **changes the given mapping** (inplace = True).
+
+    Parameters:
+        mapping: Dictionary, mapping each key to a set of string values.
+
+        key: String used as the key for the dict.
+
+        value: String value to add to the dict - as the first value in a new set, or as another value in an existing
+            set.
+
+    Returns:
+        None (the given mapping is changed).
+    """
+    if mapping.get(key) is None:
+        mapping[key] = set()
+
+    mapping[key].add(value)
