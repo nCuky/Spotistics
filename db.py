@@ -2,11 +2,9 @@ import sqlite3
 import sys
 import pandas as pd
 import tekore as tk
-from deprecation import deprecated
-
 import log
-from names import Spdt as spdtnm
-from names import Spdb as spdbnm
+from sp_data_set_names import Spdt as spdtnm
+import db_names as spdbnm
 
 
 class DB:
@@ -86,12 +84,12 @@ class DB:
         linked = track.linked_from
 
         if linked is None:
-            values_out = {spdbnm.TRACKS_LINKED_FROM.FROM_ID    : track.id,
-                          spdbnm.TRACKS_LINKED_FROM.RELINKED_ID: track.id}
+            values_out = {spdbnm.LINKED_TRACKS.FROM_ID    : track.id,
+                          spdbnm.LINKED_TRACKS.RELINKED_ID: track.id}
 
         else:
-            values_out = {spdbnm.TRACKS_LINKED_FROM.FROM_ID    : linked.id,
-                          spdbnm.TRACKS_LINKED_FROM.RELINKED_ID: track.id}
+            values_out = {spdbnm.LINKED_TRACKS.FROM_ID    : linked.id,
+                          spdbnm.LINKED_TRACKS.RELINKED_ID: track.id}
 
         return values_out
 
@@ -143,11 +141,6 @@ class DB:
                                           spdtnm.OFFLINE,
                                           spdtnm.INCOGNITO]].fillna(value = {spdtnm.SKIPPED: ''},
                                                                     inplace = False)
-
-        # df_to_insert = df_to_insert.rename(columns = {spdtnm.TIMESTAMP: spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP,
-        #                                               spdtnm.USERNAME : spdbnm.TRACKS_LISTEN_HISTORY.USERNAME,
-        #                                               spdtnm.TRACK_ID : spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID,
-        #                                               spdtnm.TRACK_URI: spdbnm.TRACKS_LISTEN_HISTORY.URI})
 
         df_to_insert = df_to_insert.drop_duplicates(
             subset = [spdbnm.TRACKS_LISTEN_HISTORY.USERNAME,
@@ -227,10 +220,16 @@ class DB:
 
                 match values:
                     case dict() as values:
+                        log.write(log.INSERTING_RECORD.format(table_name))
                         self.cursor.execute(query, values)
 
+                        log.write(log.RECORD_INSERTED)
+
                     case list() as values:
+                        log.write(log.INSERTING_RECORDS.format(table_name, len(values)))
                         self.cursor.executemany(query, values)
+
+                        log.write(log.RECORDS_INSERTED)
 
                 if commit:
                     self.commit()
@@ -397,10 +396,10 @@ class DB:
         Returns:
             None.
         """
-        self.insert(table_name = spdbnm.TRACKS_LINKED_FROM.TBL_NAME,
+        self.insert(table_name = spdbnm.LINKED_TRACKS.TBL_NAME,
                     values = linked_track_values,
-                    columns_names = [spdbnm.TRACKS_LINKED_FROM.FROM_ID,
-                                     spdbnm.TRACKS_LINKED_FROM.RELINKED_ID],
+                    columns_names = [spdbnm.LINKED_TRACKS.FROM_ID,
+                                     spdbnm.LINKED_TRACKS.RELINKED_ID],
                     commit = commit)
 
     def insert_linked_albums(self, linked_album_values: dict | list[dict], commit: bool = False) -> None:
@@ -416,10 +415,10 @@ class DB:
         Returns:
             None.
         """
-        self.insert(table_name = spdbnm.ALBUMS_LINKED_FROM.TBL_NAME,
+        self.insert(table_name = spdbnm.LINKED_ALBUMS.TBL_NAME,
                     values = linked_album_values,
-                    columns_names = [spdbnm.ALBUMS_LINKED_FROM.FROM_ID,
-                                     spdbnm.ALBUMS_LINKED_FROM.RELINKED_ID],
+                    columns_names = [spdbnm.LINKED_ALBUMS.FROM_ID,
+                                     spdbnm.LINKED_ALBUMS.RELINKED_ID],
                     commit = commit)
 
     def insert_listen_history(self, df: pd.DataFrame, commit: bool = False) -> None:
@@ -443,28 +442,32 @@ class DB:
 
     # region Selection Logic
 
-
-
     def get_listen_history_df(self) -> pd.DataFrame:
         query = f"""SELECT
-                    {spdbnm.TRACKS_LISTEN_HISTORY.USERNAME},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.TRACK_ID},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.MS_PLAYED},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.REASON_START},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.REASON_END},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.SKIPPED},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.PLATFORM},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.CONN_COUNTRY},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.URI},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.SHUFFLE},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.OFFLINE},
-                    {spdbnm.TRACKS_LISTEN_HISTORY.INCOGNITO_MODE}
-                    FROM {spdbnm.TRACKS_LISTEN_HISTORY.VIEW_NAME}
-                    ORDER BY {spdbnm.TRACKS_LISTEN_HISTORY.TIMESTAMP} ASC;
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.USERNAME},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.TIMESTAMP},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.TRACK_LISTENED_ID},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.TRACK_KNOWN_ID},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.TRACK_NAME},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.ALBUM_NAME},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.ALBUM_ARTIST_NAME},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.MS_PLAYED},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.REASON_START},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.REASON_END},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.SKIPPED},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.PLATFORM},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.CONN_COUNTRY},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.URI},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.SHUFFLE},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.OFFLINE},
+                    {spdbnm.V_KNOWN_LISTEN_HISTORY.INCOGNITO_MODE}
+                    FROM {spdbnm.V_KNOWN_LISTEN_HISTORY.VIEW_NAME};
                     """
 
+        log.write(log.FETCHING_LISTEN_HISTORY)
         listen_history_df = pd.read_sql_query(sql = query, con = self.connection)
+
+        log.write(log.LISTEN_HISTORY_FETCHED)
 
         return listen_history_df
 

@@ -19,8 +19,18 @@ FETCHING_ALBUMS_ATTRS = FETCHING_ATTRS_FOR.format('FullAlbum', '{0}', 'albums')
 ALBUMS_ATTRS_FETCHED = ATTRS_FETCHED_FOR.format('FullAlbum', '{0}', 'albums')
 FETCHING_ARTISTS_ALBUMS_ATTRS = "Fetching all albums for {0} artists (might take a while)..."
 ARTISTS_ALBUMS_ATTRS_FETCHED = "All albums were successfully fetched for {0} artists."
+FETCHING_ARTISTS_TRACKS_ATTRS = "Fetching all tracks for {0} artists (might take a while)..."
+ARTISTS_TRACKS_ATTRS_FETCHED = "All tracks were successfully fetched for {0} artists."
 FETCHING_RECENTLY_PLAYED = "Fetching the current user's Recently Played Tracks..."
 RECENTLY_PLAYED_FETCHED = "The current user's Recently Played Tracks were successfully fetched."
+FETCHING_LISTEN_HISTORY = "Fetching the listen history..."
+LISTEN_HISTORY_FETCHED = "Listen history was successfully fetched."
+
+# Inserting:
+INSERTING_RECORD = "Inserting a single record into DB-table {0}..."
+RECORD_INSERTED = "The record was successfully inserted."
+INSERTING_RECORDS = "Inserting {1} records into DB-table {0}..."
+RECORDS_INSERTED = "All records were successfully inserted."
 
 # API Errors:
 API_SERVICE_UNAVAILABLE = 'Spotify API Service is unavailable. Original error: {0}'

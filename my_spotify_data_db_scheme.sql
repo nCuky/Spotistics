@@ -249,7 +249,8 @@ CREATE VIEW IF NOT EXISTS v_tracks
 			tracks.updated_at
 	FROM tracks
 	LEFT OUTER JOIN linked_tracks ON linked_tracks.track_known_id = tracks.track_id
-								  AND linked_tracks.is_linked = TRUE;
+								  --AND linked_tracks.is_linked = TRUE
+	ORDER BY name ASC;
 
 CREATE VIEW IF NOT EXISTS v_artists_albums
 	AS SELECT artists_albums.artist_id,
@@ -300,33 +301,36 @@ CREATE VIEW IF NOT EXISTS v_linked_albums
 	LEFT OUTER JOIN albums ON albums.album_id = linked_albums.album_known_id  
 	ORDER BY name ASC,
 			 album_known_id ASC;
-								 
-CREATE VIEW IF NOT EXISTS v_tracks_listen_history 
+
+CREATE VIEW IF NOT EXISTS v_known_listen_history 
 	AS SELECT tracks_listen_history.username,
-			tracks_listen_history.time_stamp,
-			tracks_listen_history.track_id AS track_id,
-			linked_tracks.track_known_id AS track_known_id,
-			tracks.name as track_name,
-			artists.name as album_artist_name,
-			tracks_listen_history.ms_played,
-			tracks_listen_history.reason_start,
-			tracks_listen_history.reason_end,
-			tracks_listen_history.skipped,
-			tracks_listen_history.platform,
-			tracks_listen_history.conn_country,
-		    tracks_listen_history.uri,
-			tracks_listen_history.shuffle,
-			tracks_listen_history.offline,
-			tracks_listen_history.incognito_mode,
-			tracks_listen_history.created_at,
-			tracks_listen_history.updated_at 
+			  tracks_listen_history.time_stamp,			  
+			  tracks_listen_history.track_id AS track_listened_id,
+			  linked_tracks.track_known_id AS track_known_id,
+			  tracks.name AS track_name,
+			  albums.name AS album_name,
+			  artists.name AS album_artist_name,
+			  tracks_listen_history.ms_played,
+			  tracks_listen_history.reason_start,
+			  tracks_listen_history.reason_end,
+			  tracks_listen_history.skipped,
+			  tracks_listen_history.platform,
+			  tracks_listen_history.conn_country,
+		      tracks_listen_history.uri,
+			  tracks_listen_history.shuffle,
+			  tracks_listen_history.offline,
+			  tracks_listen_history.incognito_mode,
+			  tracks_listen_history.created_at,
+			  tracks_listen_history.updated_at 
 	FROM tracks_listen_history
 	INNER JOIN linked_tracks ON linked_tracks.linked_from_id = tracks_listen_history.track_id
-	INNER JOIN tracks ON tracks.track_id = linked_tracks.track_known_id -- For track name
-	INNER JOIN albums_tracks ON albums_tracks.track_id = linked_tracks.linked_from_id  
-	INNER JOIN artists_albums ON artists_albums.album_id = albums_tracks.album_id 
-							 --AND artists_albums.album_group = 'album'
-		--( SELECT FIRST artist_id FROM artists_albums WHERE artists_albums.album_id = albums_tracks.album_id )
+	INNER JOIN tracks ON tracks.track_id = linked_tracks.track_known_id
+	INNER JOIN albums_tracks ON albums_tracks.track_id = linked_tracks.track_known_id 
+	INNER JOIN albums ON albums.album_id = albums_tracks.album_id 
+	INNER JOIN artists_albums ON artists_albums.album_id = albums_tracks.album_id
 	INNER JOIN artists ON artists.artist_id = artists_albums.artist_id
 	ORDER BY username ASC,
-             time_stamp ASC;
+             time_stamp ASC,
+             track_known_id ASC,
+             album_artist_name ASC;		
+			
