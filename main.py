@@ -1,5 +1,3 @@
-# from pyspark.sql import SparkSession
-# from app_gui import AppGUI as AppGUI
 from logic import Logic as lg
 
 # Plotting
@@ -7,7 +5,6 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import seaborn as sns
 from sp_data_set_names import Spdt as spdt
-from datetime import time
 
 # Initializing the application:
 my_lg = lg(listen_history_from = 'db')

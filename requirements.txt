@@ -1,0 +1,7 @@
+matplotlib~=3.6.1
+numpy~=1.23.4
+pandas~=1.5.1
+python-dateutil~=2.8.2
+seaborn~=0.12.1
+tekore~=4.4.1
+deprecation~=2.1.0

@@ -247,34 +247,6 @@ class SpotifyAPIClient:
 
         return all_tracks
 
-    # def artist_get_all_tracks(self,
-    #                           artist_id: str) -> tk.model.ModelList[tk.model.SimpleTrack]:
-    #     """
-    #     Returns a :class:`tk.model.ModelList` of all the tracks (:class:`tk.model.SimpleTrack`) by a given Artist.
-    #
-    #     Parameters:
-    #         artist_id: ID of the desired Artist.
-    #
-    #     Returns:
-    #         A ModelList of all the tracks by the given artist.
-    #     """
-    #     self.validate_connection()
-    #
-    #     all_tracks = tk.model.ModelList()
-    #
-    #     artist_albums = self.artists_get_all_albums(artist_id)
-    #     curr_i = 1
-    #
-    #     for album in artist_albums:
-    #         album_tracks = self.album_get_all_tracks(album.id)
-    #
-    #         # for track in album_tracks:
-    #         all_tracks.extend(album_tracks)
-    #
-    #         curr_i += 1
-    #
-    #     return all_tracks
-
     def artists_get_all_tracks(self,
                                artists_ids: str | set | list | pd.Series) -> dict[
         str, list[tuple[tk.model.SimpleAlbum, list[tk.model.FullTrack]]]]:
