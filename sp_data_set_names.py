@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen = True)
-class Spdt:
+class SPDT:
     TIMESTAMP = 'time_stamp'
     MS_PLAYED = 'ms_played'
     ALBUM_ARTIST_NAME = 'album_artist_name'

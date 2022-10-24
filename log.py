@@ -34,6 +34,8 @@ RECORDS_INSERTED = "All records were successfully inserted."
 
 # API Errors:
 API_SERVICE_UNAVAILABLE = 'Spotify API Service is unavailable. Original error: {0}'
+API_SERVICE_UNAUTHORIZED = """You are not authorized for the desired API operation. Maybe your Token has expired, or 
+the requested authorization scope is not sufficient. Original error: {0}"""
 
 # DB Errors:
 EMPTY_VALUES = 'No {0} values were given, so no DB-action was performed.'

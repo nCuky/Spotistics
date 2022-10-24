@@ -283,37 +283,53 @@ class SpotifyAPIClient:
         with self.client.token_as(self.user_token):
             log.write(message = log.FETCHING_ARTISTS_TRACKS_ATTRS.format(len(unique_artists_list)))
 
-        try:
-            # Calling the API to get all albums for each given Artist ID:
-            all_artists_albums_dict = self.artists_get_all_albums(unique_artists_list)
-            all_albums_ids = [album.id for albums_list in all_artists_albums_dict.values() for album in albums_list]
+            try:
+                # Calling the API to get all albums for each given Artist ID:
+                all_artists_albums_dict = self.artists_get_all_albums(unique_artists_list)
+                all_albums_ids = [album.id for albums_list in all_artists_albums_dict.values() for album in albums_list]
 
-            all_full_albums = self.client.albums(album_ids = all_albums_ids,
-                                                 market = self.client.current_user().country)
+                log.write(message = log.FETCHING_ALBUMS_ATTRS.format(len(all_albums_ids)))
 
-            for album in all_full_albums:
-                for artist in album.artists:
-                    if artist.id in unique_artists_list:
-                        if all_artists_tracks.get(artist.id) is None:
-                            all_artists_tracks[artist.id] = []
+                all_full_albums = self.client.albums(album_ids = all_albums_ids,
+                                                     market = self.client.current_user().country)
 
-                        album_tracks_paging = album.tracks
-                        album_tracks_list = album_tracks_paging.items
+                log.write(message = log.ALBUMS_ATTRS_FETCHED.format(len(all_albums_ids)))
 
-                        while album_tracks_paging.next is not None:
-                            album_tracks_paging = self.client.next(album_tracks_paging)
-                            album_tracks_list.extend(album_tracks_paging.items)
+                for album in all_full_albums:
+                    for artist in album.artists:
+                        if artist.id in unique_artists_list:
+                            if all_artists_tracks.get(artist.id) is None:
+                                all_artists_tracks[artist.id] = []
 
-                        artist_album = (album, album_tracks_list)
-                        all_artists_tracks[artist.id].append(artist_album)
+                            album_tracks_paging = album.tracks
+                            album_tracks_list = album_tracks_paging.items
 
-            log.write(message = log.ARTISTS_TRACKS_ATTRS_FETCHED.format(len(unique_artists_list)))
+                            while album_tracks_paging.next is not None:
+                                album_tracks_paging = self.client.next(album_tracks_paging)
+                                album_tracks_list.extend(album_tracks_paging.items)
 
-        except tk.ServiceUnavailable as ex:
-            message = log.API_SERVICE_UNAVAILABLE.format(ex)
-            log.write(message = message)
+                            # It would have been best to put the tracks list as the `tracks` property of `albums`,
+                            # but unfortunately `tracks` is a Paging object and can't be replaced with a list object.
+                            # The `tracks` Paging object might not contain all the tracks
+                            # (if their amount exceeds the limit), and I want to have all of them without needing to
+                            # call the API's `next()` method.
+                            # Thus, I had to save both objects inside a tuple:
+                            artist_album = (album, album_tracks_list)
+                            all_artists_tracks[artist.id].append(artist_album)
 
-            raise tk.ServiceUnavailable(message = message, request = ex.request, response = ex.response)
+                log.write(message = log.ARTISTS_TRACKS_ATTRS_FETCHED.format(len(unique_artists_list)))
+
+            except tk.ServiceUnavailable as ex:
+                message = log.API_SERVICE_UNAVAILABLE.format(ex)
+                log.write(message = message)
+
+                raise tk.ServiceUnavailable(message = message, request = ex.request, response = ex.response)
+
+            except tk.Unauthorised as ex:
+                message = log.API_SERVICE_UNAUTHORIZED.format(ex)
+                log.write(message = message)
+
+                raise tk.Unauthorised(message = message, request = ex.request, response = ex.response)
 
         return all_artists_tracks
 
@@ -363,6 +379,12 @@ class SpotifyAPIClient:
 
                 raise tk.ServiceUnavailable(message = message)
 
+            except tk.Unauthorised as ex:
+                message = log.API_SERVICE_UNAUTHORIZED.format(ex)
+                log.write(message = message)
+
+                raise tk.Unauthorised(message = message, request = ex.request, response = ex.response)
+
         return all_artists_albums
 
     def get_full_tracks(self, tracks_ids: str | set | list | pd.Series) -> tk.model.ModelList[tk.model.FullTrack]:
@@ -402,6 +424,12 @@ class SpotifyAPIClient:
 
                 raise tk.ServiceUnavailable(message = message, request = ex.request, response = ex.response)
 
+            except tk.Unauthorised as ex:
+                message = log.API_SERVICE_UNAUTHORIZED.format(ex)
+                log.write(message = message)
+
+                raise tk.Unauthorised(message = message, request = ex.request, response = ex.response)
+
         return full_tracks
 
     def get_full_artists(self, artists_ids: str | set | list | pd.Series) -> tk.model.ModelList[tk.model.FullArtist]:
@@ -437,6 +465,12 @@ class SpotifyAPIClient:
                 log.write(message = message)
 
                 raise tk.ServiceUnavailable(message = message, request = ex.request, response = ex.response)
+
+            except tk.Unauthorised as ex:
+                message = log.API_SERVICE_UNAUTHORIZED.format(ex)
+                log.write(message = message)
+
+                raise tk.Unauthorised(message = message, request = ex.request, response = ex.response)
 
         return full_artists
 
@@ -474,6 +508,12 @@ class SpotifyAPIClient:
                 log.write(message = message)
 
                 raise tk.ServiceUnavailable(message = message, request = ex.request, response = ex.response)
+
+            except tk.Unauthorised as ex:
+                message = log.API_SERVICE_UNAUTHORIZED.format(ex)
+                log.write(message = message)
+
+                raise tk.Unauthorised(message = message, request = ex.request, response = ex.response)
 
         return full_albums
 

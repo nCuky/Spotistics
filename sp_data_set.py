@@ -6,7 +6,7 @@ from pathlib import Path
 import log
 import db
 import json
-from sp_data_set_names import Spdt as spdtnm
+from sp_data_set_names import SPDT as spdtnm
 
 
 class SpotifyDataSet:

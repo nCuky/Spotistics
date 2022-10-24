@@ -4,7 +4,7 @@ import general_utils as utl
 import db
 import db_names as spdbnm
 import sp_data_set as spdt
-from sp_data_set_names import Spdt as spdtnm
+from sp_data_set_names import SPDT as SPDTNM
 import pandas as pd
 import tekore as tk
 
@@ -15,7 +15,8 @@ import tekore as tk
 
 class Logic:
     """
-    The app's main Logic.
+    The app's main Logic. Can be used for initializing the dataset and DB, fetching data, or for performing calculations
+    on it.
     """
 
     # region Utility Methods
@@ -163,6 +164,8 @@ class Logic:
 
     # endregion Utility Methods
 
+    # region Initialization
+
     def __init__(self, listen_history_from: str = 'db'):
         """
         Initializes an instance of the app's main Logic.
@@ -174,21 +177,38 @@ class Logic:
                 'db' = fetch from an existing DB file.
                 'json' = fetch from JSON files downloaded from Spotify.
         """
-        self.my_spapi = spapi(token_keys = Logic.get_token())
-        self.my_db = db.DB()
+        self._spapi = spapi(token_keys = Logic.get_token())
+        self._db = db.DB()
 
         if listen_history_from == 'json':
-            self.my_spdt = spdt.SpotifyDataSet(db_handler = None)
+            self._spdt = spdt.SpotifyDataSet(db_handler = None)
             self.collect_data_and_save(to_csv_also = False)
 
         else:
-            self.my_spdt = spdt.SpotifyDataSet(db_handler = self.my_db)
+            self._spdt = spdt.SpotifyDataSet(db_handler = self.db)
+
+    @property
+    def spapi(self) -> spapi:
+        return self._spapi
+
+    @property
+    def db(self) -> db.DB:
+        return self._db
+
+    @property
+    def spdt(self) -> spdt.SpotifyDataSet:
+        return self._spdt
+
+    def get_listen_history_df(self) -> pd.DataFrame:
+        return self.spdt.listen_history_df.copy()
+
+    # endregion Initialization
 
     def get_artist_audio_features_data(self, name: str):
-        artist_id = self.my_spapi.find_artist(name).id
-        artist_tracks = self.my_spapi.artists_get_all_tracks(artist_id)
+        artist_id = self.spapi.find_artist(name).id
+        artist_tracks = self.spapi.artists_get_all_tracks(artist_id)
         tracks_ids = [track.id for album in artist_tracks[artist_id] for track in album[1]]
-        tracks_features = self.my_spapi.get_tracks_audio_features(tracks_ids)
+        tracks_features = self.spapi.get_tracks_audio_features(tracks_ids)
 
         # pd.read_json()
 
@@ -199,11 +219,11 @@ class Logic:
         Aggregates all listened tracks by key, and writes it as a csv file
         :return:
         """
-        only_duration = self.my_spdt.listen_history_df.groupby(spdtnm.SONG_KEY)[
-            spdtnm.MS_PLAYED].sum()
+        only_duration = self.spdt.listen_history_df.groupby(SPDTNM.SONG_KEY)[
+            SPDTNM.MS_PLAYED].sum()
 
-        my_results = self.my_spdt.listen_history_df.drop(columns = spdtnm.MS_PLAYED).groupby(
-            spdtnm.SONG_KEY).mean().assign(
+        my_results = self.spdt.listen_history_df.drop(columns = SPDTNM.MS_PLAYED).groupby(
+            SPDTNM.SONG_KEY).mean().assign(
             duration_ms = only_duration)
 
         utl.write_df_to_file(my_results, "listen_data_by_key.csv")
@@ -215,21 +235,32 @@ class Logic:
         Returns:
             None.
         """
-        self.my_spdt.listen_history_df.groupby(spdtnm.SONG_KEY).mean().to_csv("mean_by_key.csv")
+        self.spdt.listen_history_df.groupby(SPDTNM.SONG_KEY).mean().to_csv("mean_by_key.csv")
 
-    def count_unique_tracks(self) -> pd.DataFrame:
-        tracks_df = self.my_spdt.listen_history_df
+    def agg_unique_tracks_by_listens(self) -> pd.DataFrame:
+        """
+        Returns the Listen History dataframe of the unique tracks (ids), each track with its aggregated
+        total listens (count) and total listen time (sum), as well as its Album Artist ID and Name, & Album ID
+        and Name.
+
+        Returns:
+            DataFrame with the aggregated listen history by each track's listens count and total listen time.
+        """
+        tracks_df = self.get_listen_history_df()
 
         # Removing all records of tracks that were played exactly 0 milliseconds:
-        # tracks_df = tracks_df.drop(index = tracks_df.index[tracks_df[spdtnm.MS_PLAYED].eq(0)], inplace = False)
+        tracks_df = tracks_df.drop(index = tracks_df.index[tracks_df[SPDTNM.MS_PLAYED].eq(0)], inplace = False)
 
-        tracks_count = tracks_df.groupby(spdtnm.TRACK_KNOWN_ID,
+        tracks_count = tracks_df.groupby(SPDTNM.TRACK_KNOWN_ID,
                                          as_index = False).agg(
-            times_listened = (spdtnm.TRACK_KNOWN_ID, 'count'),
-            total_listen_time = (spdtnm.MS_PLAYED, 'sum'),
-            album_artist_name = (spdtnm.ALBUM_ARTIST_NAME, 'first'),
-            album_name = (spdtnm.ALBUM_NAME, 'first'),
-            track_name = (spdtnm.TRACK_NAME, 'first'))
+            times_listened = (SPDTNM.TRACK_KNOWN_ID, 'count'),
+            total_listen_time = (SPDTNM.MS_PLAYED, 'sum'),
+            album_artist_id = (spdbnm.V_KNOWN_LISTEN_HISTORY.ALBUM_ARTIST_ID, 'first'),
+            album_artist_name = (SPDTNM.ALBUM_ARTIST_NAME, 'first'),
+            album_known_id = (spdbnm.V_KNOWN_LISTEN_HISTORY.ALBUM_KNOWN_ID, 'first'),
+            album_name = (SPDTNM.ALBUM_NAME, 'first'),
+            track_known_id = (spdbnm.V_KNOWN_LISTEN_HISTORY.TRACK_KNOWN_ID, 'first'),
+            track_name = (SPDTNM.TRACK_NAME, 'first'))
 
         return tracks_count
 
@@ -246,13 +277,13 @@ class Logic:
         # Writing to CSV file:
         track_file_name = filename if filename is not None and filename != '' else 'all_tracks_raw_{0}.csv'
 
-        utl.write_df_to_file(self.my_spdt.listen_history_df, track_file_name)
+        utl.write_df_to_file(self.spdt.listen_history_df, track_file_name)
 
     def collect_data_and_save(self, to_csv_also: bool = False):
         """
         Collects all listen history, extracts models' (tracks, artists, etc.) information from it
         and saves it in the local DB.
-        Then, replaces the inner :class:`spdt.SpotifyDataSet` dataset manager with a new manager
+        Then, replaces the inner :class:`SPDT.SpotifyDataSet` dataset manager with a new manager
         containing all the updated data.
 
         Parameters:
@@ -262,7 +293,7 @@ class Logic:
             None.
         """
         try:
-            full_tracks_mdlist = self.my_spapi.get_full_tracks(self.my_spdt.listen_history_df[spdtnm.TRACK_ID])
+            full_tracks_mdlist = self.spapi.get_full_tracks(self.spdt.listen_history_df[SPDTNM.TRACK_ID])
 
             self.save_full_tracks_to_db(full_tracks_mdlist)
 
@@ -274,7 +305,7 @@ class Logic:
         if to_csv_also:
             self.save_listen_history_to_csv('known_listen_history_{0}.csv')
 
-        self.my_spdt = spdt.SpotifyDataSet(db_handler = self.my_db)
+        self.spdt = spdt.SpotifyDataSet(db_handler = self.db)
 
     def save_full_tracks_to_db(self, full_tracks: tk.model.ModelList[tk.model.FullTrack]) -> None:
         """
@@ -411,7 +442,7 @@ class Logic:
         # I've collected the ID's of only the tracks that are Relinked from other tracks.
         # Here, fetching FullTrack attributes only for those relinked tracks (their IDs were only discovered earlier
         # in the iterated FullTracks list, and now I need the rest of their attributes):
-        known_full_tracks = self.my_spapi.get_full_tracks(tracks_ids = known_ids_of_linked_tracks)
+        known_full_tracks = self.spapi.get_full_tracks(tracks_ids = known_ids_of_linked_tracks)
 
         for known_full_track in known_full_tracks:
             map_known_tracks_to_albums[known_full_track.id] = known_full_track.album.id
@@ -469,7 +500,7 @@ class Logic:
         all_artists_albums_list_unq = utl.get_unique_dicts(all_artists_albums_list_to_insert)
 
         # Filling attribute `is_available` for each album:
-        full_albums = self.my_spapi.get_full_albums(all_albums_ids)
+        full_albums = self.spapi.get_full_albums(all_albums_ids)
 
         albums_availability = {_full_album.id: len(_full_album.available_markets) > 0 for _full_album in full_albums}
 
@@ -477,13 +508,13 @@ class Logic:
             all_albums_list_unq[i][spdbnm.ALBUMS.IS_AVAILABLE] = albums_availability[full_album[spdbnm.ALBUMS.ID]]
 
         # Inserting all values to the corresponding DB-tables:
-        self.my_db.insert_listen_history(self.my_spdt.listen_history_df)
-        self.my_db.insert_tracks(all_tracks_list_unq)
-        self.my_db.insert_linked_tracks(all_linked_tracks_list_unq)
-        self.my_db.insert_linked_albums(all_linked_albums_list_unq)
-        self.my_db.insert_artists(all_artists_list_unq)
-        self.my_db.insert_albums(all_albums_list_unq)
-        self.my_db.insert_albums_tracks(all_albums_tracks_list_unq)
-        self.my_db.insert_artists_albums(all_artists_albums_list_unq)
+        self.db.insert_listen_history(self.spdt.listen_history_df)
+        self.db.insert_tracks(all_tracks_list_unq)
+        self.db.insert_linked_tracks(all_linked_tracks_list_unq)
+        self.db.insert_linked_albums(all_linked_albums_list_unq)
+        self.db.insert_artists(all_artists_list_unq)
+        self.db.insert_albums(all_albums_list_unq)
+        self.db.insert_albums_tracks(all_albums_tracks_list_unq)
+        self.db.insert_artists_albums(all_artists_albums_list_unq)
 
-        self.my_db.commit()
+        self.db.commit()
