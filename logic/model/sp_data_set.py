@@ -6,7 +6,7 @@ from pathlib import Path
 from logic.frontend import log
 from logic.db import db
 import json
-from sp_data_set_names import SPDT as spdtnm
+from logic.model.sp_data_set_names import SPDT as spdtnm
 
 
 class SpotifyDataSet:

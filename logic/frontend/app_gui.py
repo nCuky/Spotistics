@@ -1,5 +1,5 @@
 import tkinter as tk
-from logic.model import logic as lg
+from logic import app_logic as lg
 
 
 class AppGUI:
@@ -11,7 +11,7 @@ class AppGUI:
         self.events = []
 
         self.window = tk.Tk()
-        self.window.title("Cuky's Musical Analytics")
+        self.window.title("Spotistics: Listening History Analysis & Statistics")
 
         self.window.rowconfigure(index=0, minsize=100, weight=1)
         self.window.columnconfigure(index=0, minsize=100, weight=1)

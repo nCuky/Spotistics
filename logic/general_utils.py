@@ -3,12 +3,9 @@ from logic.frontend import log
 from datetime import datetime as dt
 
 
-# from typing import Set, List, Dict
-
-
 def write_df_to_file(df: pd.DataFrame, file_name: str) -> None:
     """
-    Writes a given DataFrame to a file.
+    Writes a given DataFrame to a CSV file.
 
     Parameters:
         df: DataFrame to write to a file.
@@ -20,7 +17,6 @@ def write_df_to_file(df: pd.DataFrame, file_name: str) -> None:
     """
     file_path = 'data/personal_data/prepared/' + file_name.format(dt.now().strftime("%Y-%m-%d_%H-%M-%S"))
     log.write(log.WRITING_FILE.format(file_path))
-    # Writing an Excel Spreadsheet doesn't work yet.
     df.to_csv(path_or_buf = file_path,
               encoding = 'utf-8-sig',  # UTF-8, explicitly signed with a BOM at the start of the file
               index = False)

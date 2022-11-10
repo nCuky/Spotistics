@@ -4,7 +4,7 @@ import pandas as pd
 import tekore as tk
 from logic.frontend import log
 from logic.model.sp_data_set_names import SPDT as SPDTNM
-import db_names as SPDBNM
+from logic.db import db_names as SPDBNM
 
 
 class DB:
@@ -15,7 +15,7 @@ class DB:
     @staticmethod
     def eprint(*args, **kwargs):
         """Print to stderr."""
-        print(*args, file = sys.stderr, **kwargs)
+        print(*args, file=sys.stderr, **kwargs)
         log.write(*args)
 
     # region Insertion Utilities
@@ -34,18 +34,18 @@ class DB:
         values_out = None
 
         if track is not None:
-            values_out = {SPDBNM.TRACKS.ID          : track.id,
-                          SPDBNM.TRACKS.HREF        : track.href,
-                          SPDBNM.TRACKS.URI         : track.uri,
-                          SPDBNM.TRACKS.DISC_NUMBER : track.disc_number,
-                          SPDBNM.TRACKS.DURATION_MS : track.duration_ms,
-                          SPDBNM.TRACKS.EXPLICIT    : track.explicit,
-                          SPDBNM.TRACKS.NAME        : track.name,
-                          SPDBNM.TRACKS.PREVIEW_URL : str(track.preview_url),
+            values_out = {SPDBNM.TRACKS.ID: track.id,
+                          SPDBNM.TRACKS.HREF: track.href,
+                          SPDBNM.TRACKS.URI: track.uri,
+                          SPDBNM.TRACKS.DISC_NUMBER: track.disc_number,
+                          SPDBNM.TRACKS.DURATION_MS: track.duration_ms,
+                          SPDBNM.TRACKS.EXPLICIT: track.explicit,
+                          SPDBNM.TRACKS.NAME: track.name,
+                          SPDBNM.TRACKS.PREVIEW_URL: str(track.preview_url),
                           SPDBNM.TRACKS.TRACK_NUMBER: track.track_number,
-                          SPDBNM.TRACKS.IS_LOCAL    : track.is_local,
-                          SPDBNM.TRACKS.POPULARITY  : track.popularity,
-                          SPDBNM.TRACKS.IS_PLAYABLE : track.is_playable}
+                          SPDBNM.TRACKS.IS_LOCAL: track.is_local,
+                          SPDBNM.TRACKS.POPULARITY: track.popularity,
+                          SPDBNM.TRACKS.IS_PLAYABLE: track.is_playable}
 
         return values_out
 
@@ -58,13 +58,13 @@ class DB:
         :return: Dictionary with the album's values.
         """
         album = track.album
-        values_out = {SPDBNM.ALBUMS.ID                    : album.id,
-                      SPDBNM.ALBUMS.HREF                  : album.href,
-                      SPDBNM.ALBUMS.URI                   : album.uri,
-                      SPDBNM.ALBUMS.NAME                  : album.name,
-                      SPDBNM.ALBUMS.ALBUM_TYPE            : album.album_type,
-                      SPDBNM.ALBUMS.TOTAL_TRACKS          : album.total_tracks,
-                      SPDBNM.ALBUMS.RELEASE_DATE          : album.release_date,
+        values_out = {SPDBNM.ALBUMS.ID: album.id,
+                      SPDBNM.ALBUMS.HREF: album.href,
+                      SPDBNM.ALBUMS.URI: album.uri,
+                      SPDBNM.ALBUMS.NAME: album.name,
+                      SPDBNM.ALBUMS.ALBUM_TYPE: album.album_type,
+                      SPDBNM.ALBUMS.TOTAL_TRACKS: album.total_tracks,
+                      SPDBNM.ALBUMS.RELEASE_DATE: album.release_date,
                       SPDBNM.ALBUMS.RELEASE_DATE_PRECISION: str(album.release_date_precision)}
         # track.id)
 
@@ -84,11 +84,11 @@ class DB:
         linked = track.linked_from
 
         if linked is None:
-            values_out = {SPDBNM.LINKED_TRACKS.FROM_ID    : track.id,
+            values_out = {SPDBNM.LINKED_TRACKS.FROM_ID: track.id,
                           SPDBNM.LINKED_TRACKS.RELINKED_ID: track.id}
 
         else:
-            values_out = {SPDBNM.LINKED_TRACKS.FROM_ID    : linked.id,
+            values_out = {SPDBNM.LINKED_TRACKS.FROM_ID: linked.id,
                           SPDBNM.LINKED_TRACKS.RELINKED_ID: track.id}
 
         return values_out
@@ -139,13 +139,13 @@ class DB:
                                           SPDTNM.TRACK_URI,
                                           SPDTNM.SHUFFLE,
                                           SPDTNM.OFFLINE,
-                                          SPDTNM.INCOGNITO]].fillna(value = {SPDTNM.SKIPPED: ''},
-                                                                    inplace = False)
+                                          SPDTNM.INCOGNITO]].fillna(value={SPDTNM.SKIPPED: ''},
+                                                                    inplace=False)
 
         df_to_insert = df_to_insert.drop_duplicates(
-            subset = [SPDBNM.TRACKS_LISTEN_HISTORY.USERNAME,
-                      SPDBNM.TRACKS_LISTEN_HISTORY.TIMESTAMP,
-                      SPDBNM.TRACKS_LISTEN_HISTORY.TRACK_ID])
+            subset=[SPDBNM.TRACKS_LISTEN_HISTORY.USERNAME,
+                    SPDBNM.TRACKS_LISTEN_HISTORY.TIMESTAMP,
+                    SPDBNM.TRACKS_LISTEN_HISTORY.TRACK_ID])
 
         return df_to_insert
 
@@ -157,8 +157,8 @@ class DB:
         """
         Initializes the DB Manager for working with the DB.
         """
-        self._db_filename_ = "../../data/personal_data/my_spotify_data.db"
-        self._db_schema_filename = "my_spotify_data_db_scheme.sql"
+        self._db_filename_ = "data/personal_data/my_spotify_data.db"
+        self._db_schema_filename = "logic/db/my_spotify_data_db_scheme.sql"
 
         # Connect to DB
         self.connection = sqlite3.connect(self._db_filename_)
@@ -171,7 +171,7 @@ class DB:
 
         except sqlite3.OperationalError as e:
             DB.eprint(log.DB_OPERATIONAL_ERROR.format(e))
-            log.write(message = log.DB_SCHEMA_ERROR)
+            log.write(message=log.DB_SCHEMA_ERROR)
 
     def commit(self) -> None:
         """Commits all changes to the DB."""
@@ -257,22 +257,22 @@ class DB:
         """
         listen_history_list = listen_history_df.to_dict('records')
 
-        self.insert(table_name = SPDBNM.TRACKS_LISTEN_HISTORY.TBL_NAME,
-                    values = listen_history_list,
-                    columns_names = [SPDBNM.TRACKS_LISTEN_HISTORY.USERNAME,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.TIMESTAMP,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.TRACK_ID,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.MS_PLAYED,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.REASON_START,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.REASON_END,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.SKIPPED,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.PLATFORM,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.CONN_COUNTRY,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.URI,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.SHUFFLE,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.OFFLINE,
-                                     SPDBNM.TRACKS_LISTEN_HISTORY.INCOGNITO_MODE],
-                    commit = commit)
+        self.insert(table_name=SPDBNM.TRACKS_LISTEN_HISTORY.TBL_NAME,
+                    values=listen_history_list,
+                    columns_names=[SPDBNM.TRACKS_LISTEN_HISTORY.USERNAME,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.TIMESTAMP,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.TRACK_ID,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.MS_PLAYED,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.REASON_START,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.REASON_END,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.SKIPPED,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.PLATFORM,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.CONN_COUNTRY,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.URI,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.SHUFFLE,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.OFFLINE,
+                                   SPDBNM.TRACKS_LISTEN_HISTORY.INCOGNITO_MODE],
+                    commit=commit)
 
     def insert_tracks(self, tracks_values: dict | list[dict], commit: bool = False) -> None:
         """
@@ -286,22 +286,22 @@ class DB:
         Returns:
             None.
         """
-        self.insert(table_name = SPDBNM.TRACKS.TBL_NAME,
-                    values = tracks_values,
-                    columns_names = [SPDBNM.TRACKS.ID,
-                                     SPDBNM.TRACKS.NAME,
-                                     SPDBNM.TRACKS.DURATION_MS,
-                                     SPDBNM.TRACKS.DISC_NUMBER,
-                                     SPDBNM.TRACKS.TRACK_NUMBER,
-                                     SPDBNM.TRACKS.EXPLICIT,
-                                     SPDBNM.TRACKS.POPULARITY,
-                                     SPDBNM.TRACKS.IS_LOCAL,
-                                     SPDBNM.TRACKS.IS_PLAYABLE,
-                                     SPDBNM.TRACKS.ISRC,
-                                     SPDBNM.TRACKS.HREF,
-                                     SPDBNM.TRACKS.URI,
-                                     SPDBNM.TRACKS.PREVIEW_URL],
-                    commit = commit)
+        self.insert(table_name=SPDBNM.TRACKS.TBL_NAME,
+                    values=tracks_values,
+                    columns_names=[SPDBNM.TRACKS.ID,
+                                   SPDBNM.TRACKS.NAME,
+                                   SPDBNM.TRACKS.DURATION_MS,
+                                   SPDBNM.TRACKS.DISC_NUMBER,
+                                   SPDBNM.TRACKS.TRACK_NUMBER,
+                                   SPDBNM.TRACKS.EXPLICIT,
+                                   SPDBNM.TRACKS.POPULARITY,
+                                   SPDBNM.TRACKS.IS_LOCAL,
+                                   SPDBNM.TRACKS.IS_PLAYABLE,
+                                   SPDBNM.TRACKS.ISRC,
+                                   SPDBNM.TRACKS.HREF,
+                                   SPDBNM.TRACKS.URI,
+                                   SPDBNM.TRACKS.PREVIEW_URL],
+                    commit=commit)
 
     def insert_artists(self, artists_values: dict | list[dict], commit: bool = False) -> None:
         """
@@ -315,15 +315,15 @@ class DB:
         Returns:
             None.
         """
-        self.insert(table_name = SPDBNM.ARTISTS.TBL_NAME,
-                    values = artists_values,
-                    columns_names = [SPDBNM.ARTISTS.ID,
-                                     SPDBNM.ARTISTS.NAME,
-                                     SPDBNM.ARTISTS.TOTAL_FOLLOWERS,
-                                     SPDBNM.ARTISTS.POPULARITY,
-                                     SPDBNM.ARTISTS.HREF,
-                                     SPDBNM.ARTISTS.URI],
-                    commit = commit)
+        self.insert(table_name=SPDBNM.ARTISTS.TBL_NAME,
+                    values=artists_values,
+                    columns_names=[SPDBNM.ARTISTS.ID,
+                                   SPDBNM.ARTISTS.NAME,
+                                   SPDBNM.ARTISTS.TOTAL_FOLLOWERS,
+                                   SPDBNM.ARTISTS.POPULARITY,
+                                   SPDBNM.ARTISTS.HREF,
+                                   SPDBNM.ARTISTS.URI],
+                    commit=commit)
 
     def insert_genres(self, genres_values: dict | list[dict], commit: bool = False) -> None:
         """
@@ -337,10 +337,10 @@ class DB:
         Returns:
             None.
         """
-        self.insert(table_name = SPDBNM.GENRES.TBL_NAME,
-                    values = genres_values,
-                    columns_names = [SPDBNM.GENRES.NAME],
-                    commit = commit)
+        self.insert(table_name=SPDBNM.GENRES.TBL_NAME,
+                    values=genres_values,
+                    columns_names=[SPDBNM.GENRES.NAME],
+                    commit=commit)
 
     def insert_albums(self, albums_values: dict | list[dict], commit: bool = False) -> None:
         """
@@ -354,18 +354,18 @@ class DB:
         Returns:
             None.
         """
-        self.insert(table_name = SPDBNM.ALBUMS.TBL_NAME,
-                    values = albums_values,
-                    columns_names = [SPDBNM.ALBUMS.ID,
-                                     SPDBNM.ALBUMS.NAME,
-                                     SPDBNM.ALBUMS.TOTAL_TRACKS,
-                                     SPDBNM.ALBUMS.RELEASE_DATE,
-                                     SPDBNM.ALBUMS.RELEASE_DATE_PRECISION,
-                                     SPDBNM.ALBUMS.ALBUM_TYPE,
-                                     SPDBNM.ALBUMS.IS_AVAILABLE,
-                                     SPDBNM.ALBUMS.HREF,
-                                     SPDBNM.ALBUMS.URI],
-                    commit = commit)
+        self.insert(table_name=SPDBNM.ALBUMS.TBL_NAME,
+                    values=albums_values,
+                    columns_names=[SPDBNM.ALBUMS.ID,
+                                   SPDBNM.ALBUMS.NAME,
+                                   SPDBNM.ALBUMS.TOTAL_TRACKS,
+                                   SPDBNM.ALBUMS.RELEASE_DATE,
+                                   SPDBNM.ALBUMS.RELEASE_DATE_PRECISION,
+                                   SPDBNM.ALBUMS.ALBUM_TYPE,
+                                   SPDBNM.ALBUMS.IS_AVAILABLE,
+                                   SPDBNM.ALBUMS.HREF,
+                                   SPDBNM.ALBUMS.URI],
+                    commit=commit)
 
     def insert_artists_albums(self, artists_albums_values: dict | list[dict], commit: bool = False) -> None:
         """Insert single or multiple Artists' Albums values to the **Artists' Albums** DB table.
@@ -378,12 +378,12 @@ class DB:
         Returns:
             None.
         """
-        self.insert(table_name = SPDBNM.ARTISTS_ALBUMS.TBL_NAME,
-                    values = artists_albums_values,
-                    columns_names = [SPDBNM.ARTISTS_ALBUMS.ARTIST_ID,
-                                     SPDBNM.ARTISTS_ALBUMS.ALBUM_ID,
-                                     SPDBNM.ARTISTS_ALBUMS.ALBUM_GROUP],
-                    commit = commit)
+        self.insert(table_name=SPDBNM.ARTISTS_ALBUMS.TBL_NAME,
+                    values=artists_albums_values,
+                    columns_names=[SPDBNM.ARTISTS_ALBUMS.ARTIST_ID,
+                                   SPDBNM.ARTISTS_ALBUMS.ALBUM_ID,
+                                   SPDBNM.ARTISTS_ALBUMS.ALBUM_GROUP],
+                    commit=commit)
 
     def insert_albums_tracks(self, albums_tracks_values: dict | list[dict], commit: bool = False) -> None:
         """
@@ -398,11 +398,11 @@ class DB:
         Returns:
             None.
         """
-        self.insert(table_name = SPDBNM.ALBUMS_TRACKS.TBL_NAME,
-                    values = albums_tracks_values,
-                    columns_names = [SPDBNM.ALBUMS_TRACKS.ALBUM_ID,
-                                     SPDBNM.ALBUMS_TRACKS.TRACK_ID],
-                    commit = commit)
+        self.insert(table_name=SPDBNM.ALBUMS_TRACKS.TBL_NAME,
+                    values=albums_tracks_values,
+                    columns_names=[SPDBNM.ALBUMS_TRACKS.ALBUM_ID,
+                                   SPDBNM.ALBUMS_TRACKS.TRACK_ID],
+                    commit=commit)
 
     def insert_linked_tracks(self, linked_track_values: dict | list[dict], commit: bool = False) -> None:
         """
@@ -417,11 +417,11 @@ class DB:
         Returns:
             None.
         """
-        self.insert(table_name = SPDBNM.LINKED_TRACKS.TBL_NAME,
-                    values = linked_track_values,
-                    columns_names = [SPDBNM.LINKED_TRACKS.FROM_ID,
-                                     SPDBNM.LINKED_TRACKS.RELINKED_ID],
-                    commit = commit)
+        self.insert(table_name=SPDBNM.LINKED_TRACKS.TBL_NAME,
+                    values=linked_track_values,
+                    columns_names=[SPDBNM.LINKED_TRACKS.FROM_ID,
+                                   SPDBNM.LINKED_TRACKS.RELINKED_ID],
+                    commit=commit)
 
     def insert_linked_albums(self, linked_album_values: dict | list[dict], commit: bool = False) -> None:
         """
@@ -436,11 +436,11 @@ class DB:
         Returns:
             None.
         """
-        self.insert(table_name = SPDBNM.LINKED_ALBUMS.TBL_NAME,
-                    values = linked_album_values,
-                    columns_names = [SPDBNM.LINKED_ALBUMS.FROM_ID,
-                                     SPDBNM.LINKED_ALBUMS.RELINKED_ID],
-                    commit = commit)
+        self.insert(table_name=SPDBNM.LINKED_ALBUMS.TBL_NAME,
+                    values=linked_album_values,
+                    columns_names=[SPDBNM.LINKED_ALBUMS.FROM_ID,
+                                   SPDBNM.LINKED_ALBUMS.RELINKED_ID],
+                    commit=commit)
 
     def insert_listen_history(self, df: pd.DataFrame, commit: bool = False) -> None:
         """
@@ -489,12 +489,10 @@ class DB:
                     """
 
         log.write(log.FETCHING_LISTEN_HISTORY)
-        listen_history_df = pd.read_sql_query(sql = query, con = self.connection)
+        listen_history_df = pd.read_sql_query(sql=query, con=self.connection)
 
         log.write(log.LISTEN_HISTORY_FETCHED)
 
         return listen_history_df
-
-
 
     # endregion Selection Logic
