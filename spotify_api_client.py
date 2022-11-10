@@ -248,7 +248,8 @@ class SpotifyAPIClient:
         return all_tracks
 
     def artists_get_all_tracks(self,
-                               artists_ids: str | set | list | pd.Series) -> dict[
+                               artists_ids: str | set | list | pd.Series,
+                               album_groups: list[str | tk.model.AlbumGroup] = None) -> dict[
         str, list[tuple[tk.model.SimpleAlbum, list[tk.model.FullTrack]]]]:
         """
         For each Artist ID in the given collection, fetches all of their **Tracks** from the API.
@@ -265,6 +266,10 @@ class SpotifyAPIClient:
 
         Parameters:
             artists_ids: A single ID or multiple IDs of all the desired artists.
+
+            album_groups: List with the desired types of albums to fetch.
+                Possible values: 'album', 'appears_on', 'compilation', 'single'.
+                Default: ['album', 'appears_on'].
 
         Returns:
             dict[str, list[tuple[tk.model.SimpleAlbum, list[tk.model.FullTrack]]]]:
@@ -285,7 +290,8 @@ class SpotifyAPIClient:
 
             try:
                 # Calling the API to get all albums for each given Artist ID:
-                all_artists_albums_dict = self.artists_get_all_albums(unique_artists_list)
+                all_artists_albums_dict = self.artists_get_all_albums(artists_ids = unique_artists_list,
+                                                                      album_groups = album_groups)
                 all_albums_ids = [album.id for albums_list in all_artists_albums_dict.values() for album in albums_list]
 
                 log.write(message = log.FETCHING_ALBUMS_ATTRS.format(len(all_albums_ids)))
@@ -334,7 +340,9 @@ class SpotifyAPIClient:
         return all_artists_tracks
 
     def artists_get_all_albums(self,
-                               artists_ids: str | set | list | pd.Series) -> dict[str, list[tk.model.SimpleAlbum]]:
+                               artists_ids: str | set | list | pd.Series,
+                               album_groups: list[str | tk.model.AlbumGroup] = None) -> dict[
+        str, list[tk.model.SimpleAlbum]]:
         """
         For each Artist ID in the given collection, fetches all of their **Albums** from the API.
 
@@ -348,12 +356,18 @@ class SpotifyAPIClient:
         Parameters:
             artists_ids: A single ID or multiple IDs of all the desired artists.
 
+            album_groups: List with the desired types of albums to fetch.
+                Possible values: 'album', 'appears_on', 'compilation', 'single'.
+                Default: ['album', 'appears_on'].
+
         Returns:
             Dictionary, containing one entry for each artist, with a ModelList of all that artist's albums.
 
         Raises:
             tk.ServiceUnavailable: if Spotify's API service is unavailable.
         """
+        include_album_groups = album_groups if album_groups is not None else [tk.model.AlbumGroup.album,
+                                                                              tk.model.AlbumGroup.appears_on]
         unique_artists_list = ut.get_unique_vals_list(artists_ids)
         all_artists_albums = {}
 
@@ -364,7 +378,8 @@ class SpotifyAPIClient:
                 # Calling the API to get all albums for each given Artist ID:
                 for artist in unique_artists_list:
                     # client.artist_albums() is not chunked, meaning the results are paged.
-                    artist_albums_paging = self.client.artist_albums(artist_id = artist)
+                    artist_albums_paging = self.client.artist_albums(artist_id = artist,
+                                                                     include_groups = include_album_groups)
                     all_artists_albums[artist] = artist_albums_paging.items
 
                     while artist_albums_paging.next is not None:

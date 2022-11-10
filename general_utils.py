@@ -50,7 +50,7 @@ def get_unique_vals_list(values: str | pd.Series | set | list) -> list:
         case list() as values:
             unique_values = list(set(values))
 
-        case _:
+        case other:
             unique_values = []
 
     return unique_values

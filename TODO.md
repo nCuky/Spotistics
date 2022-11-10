@@ -15,9 +15,12 @@
 
 ### Ideas for graphs
 
+- [x] Top artists by number of listens per each artist
+- [x] Top artists by listening time (total time for each artist)
+- [x] Artist completionist: total listen time to an artist, as percentage of the total time of their discography's tracks.
+- [ ] Pie chart for my top listened genres
+- [ ] Pie chart for my top listened artists
 - [ ] A given artist's tracks collected by track's Key and Mode
-- [x] Top 50 artists by listening time (total time for each artist)
-- [ ] Artist completionist: total listen time to an artist, as percentage of the total time of their discography's tracks.
 - [ ] Album completion % probability by genre
 - [ ] Forgotten tracks: listened tracks with the longest time gap between listens
 - [ ] Unpopular tracks: all listens to the least-popular tracks

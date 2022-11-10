@@ -31,6 +31,7 @@ INSERTING_RECORD = "Inserting a single record into DB-table {0}..."
 RECORD_INSERTED = "The record was successfully inserted."
 INSERTING_RECORDS = "Inserting {1} records into DB-table {0}..."
 RECORDS_INSERTED = "All records were successfully inserted."
+ERROR_INVALID_RECORDS_TYPE = "Error: The records to insert are of an invalid type: {0}. No records were inserted."
 
 # API Errors:
 API_SERVICE_UNAVAILABLE = 'Spotify API Service is unavailable. Original error: {0}'

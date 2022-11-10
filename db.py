@@ -231,6 +231,9 @@ class DB:
 
                         log.write(log.RECORDS_INSERTED)
 
+                    case other:
+                        log.write(log.ERROR_INVALID_RECORDS_TYPE.format(type(values)))
+
                 if commit:
                     self.commit()
 
@@ -320,6 +323,23 @@ class DB:
                                      SPDBNM.ARTISTS.POPULARITY,
                                      SPDBNM.ARTISTS.HREF,
                                      SPDBNM.ARTISTS.URI],
+                    commit = commit)
+
+    def insert_genres(self, genres_values: dict | list[dict], commit: bool = False) -> None:
+        """
+        Insert single or multiple Genres to the **Genres** DB-table.
+
+        Parameters:
+            genres_values: Genre string, or a List of strings, to insert.
+
+            commit: Whether to commit the operation.
+
+        Returns:
+            None.
+        """
+        self.insert(table_name = SPDBNM.GENRES.TBL_NAME,
+                    values = genres_values,
+                    columns_names = [SPDBNM.GENRES.NAME],
                     commit = commit)
 
     def insert_albums(self, albums_values: dict | list[dict], commit: bool = False) -> None:
