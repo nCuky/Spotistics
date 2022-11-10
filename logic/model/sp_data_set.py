@@ -3,8 +3,8 @@ import pandas as pd
 import re
 import os.path
 from pathlib import Path
-import log
-import db
+from logic.frontend import log
+from logic.db import db
 import json
 from sp_data_set_names import SPDT as spdtnm
 
@@ -23,7 +23,7 @@ class SpotifyDataSet:
                          'master_metadata_album_artist_name': spdtnm.ALBUM_ARTIST_NAME,
                          'master_metadata_album_album_name' : spdtnm.ALBUM_NAME}
 
-    DEFAULT_JSON_FILE_PATH = 'data/personal_data/raw_json'
+    DEFAULT_JSON_FILE_PATH = '../../data/personal_data/raw_json'
     DEFAULT_JSON_FILE_PREFIX = 'endsong'
 
     # region Utility Methods
@@ -188,7 +188,7 @@ class SpotifyDataSet:
                                                          regex = True)
 
         updated_df.insert(loc = col_idx_to_insert,
-                          column = spdtnm.TRACK_ID,  # 'track_id'
+                          column = spdtnm.TRACK_ID,
                           value = track_ids)
 
     @staticmethod

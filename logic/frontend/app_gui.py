@@ -1,11 +1,11 @@
 import tkinter as tk
-import logic as lg
+from logic.model import logic as lg
 
 
 class AppGUI:
-    '''
+    """
     Application GUI manager, built upon "tkinter" library.
-    '''
+    """
 
     def __init__(self):
         self.events = []

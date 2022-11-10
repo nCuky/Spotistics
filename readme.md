@@ -1,4 +1,4 @@
-# "Spotistics": Spotify Listening History Analysis & Statistics
+# _Spotistics_: Analysis & Statistics of your Spotify Listening History 
 
 [Spotify](spotify.com) is a very popular music streaming service, with over 400M monthly active users and 80M tracks.
 I (Nadav) have been listening to music in Spotify since 2017. Throughout the years, I listened to more than 60,000

@@ -1,11 +1,8 @@
-import pandas as pd
-
-from db_names import V_KNOWN_LISTEN_HISTORY as DF_NAMES
-from logic import Logic as lg
+from logic.model.logic import Logic as lg
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import seaborn as sns
-from sp_data_set_names import SPDT as SPDT
+from logic.model.sp_data_set_names import SPDT as SPDT
 import plotting_names as PLTNM
 
 
@@ -130,7 +127,6 @@ def top_artists_albums_completion_percentage(logic: lg,
                                            fmt = '%.1f%%',
                                            label_type = 'edge',
                                            padding = 2)
-
     sns.set_style('darkgrid')
 
     plt.show()

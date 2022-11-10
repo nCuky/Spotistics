@@ -2,8 +2,8 @@ import sqlite3
 import sys
 import pandas as pd
 import tekore as tk
-import log
-from sp_data_set_names import SPDT as SPDTNM
+from logic.frontend import log
+from logic.model.sp_data_set_names import SPDT as SPDTNM
 import db_names as SPDBNM
 
 
@@ -157,7 +157,7 @@ class DB:
         """
         Initializes the DB Manager for working with the DB.
         """
-        self._db_filename_ = "my_spotify_data.db"
+        self._db_filename_ = "../../data/personal_data/my_spotify_data.db"
         self._db_schema_filename = "my_spotify_data_db_scheme.sql"
 
         # Connect to DB
@@ -231,7 +231,7 @@ class DB:
 
                         log.write(log.RECORDS_INSERTED)
 
-                    case other:
+                    case _:
                         log.write(log.ERROR_INVALID_RECORDS_TYPE.format(type(values)))
 
                 if commit:
@@ -390,7 +390,8 @@ class DB:
         Insert single or multiple Albums' Tracks' values to the **Albums' Tracks** DB-table.
 
         Parameters:
-            albums_tracks_values: Dictionary, or a List of Dicts, each containing the desired Album's Tracks' values to insert.
+            albums_tracks_values: Dictionary, or a List of Dicts, each containing the desired Album's Tracks'
+                values to insert.
 
             commit: Whether to commit the operation.
 

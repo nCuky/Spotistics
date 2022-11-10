@@ -1,11 +1,9 @@
-import log
-from spotify_api_client import SpotifyAPIClient as spapi
-import general_utils as utl
-import db
-import db_names as SPDBNM
-import sp_data_set as spdt
-from sp_data_set_names import SPDT as SPDTNM
-import plotting_names as PLTNM
+from logic.model.spotify_api_client import SpotifyAPIClient as spapi
+from logic import general_utils as utl
+from logic.db import db_names as SPDBNM, db
+from logic.model import sp_data_set as spdt
+from logic.model.sp_data_set_names import SPDT as SPDTNM
+from logic.frontend import plotting_names as PLTNM, log
 import numpy as np
 import pandas as pd
 import tekore as tk
@@ -26,7 +24,7 @@ class Logic:
     @staticmethod
     def get_token(token_path = None):
         if token_path is None:
-            token_path = "token"
+            token_path = "../../token"
         token_file = open(token_path, "rt")
         token_file_text = token_file.readlines()
         token_file.close()
@@ -407,7 +405,9 @@ class Logic:
         artist_tracks_completion_df = artist_tracks_completion_df.drop(
             columns = [PLTNM.LISTENED_TRACKS, PLTNM.TOTAL_TRACKS]).set_index(PLTNM.ARTIST_NAME)
 
-        artist_tracks_completion_df.sort_values(by = PLTNM.PERCENTAGE_LISTENED, ascending = False, inplace = True)
+        artist_tracks_completion_df.sort_values(by = PLTNM.PERCENTAGE_LISTENED,
+                                                ascending = False,
+                                                inplace = True)
 
         return artist_tracks_completion_df
 
@@ -479,7 +479,7 @@ class Logic:
         if to_csv_also:
             self.save_listen_history_to_csv('known_listen_history_{0}.csv')
 
-        self.spdt = spdt.SpotifyDataSet(db_handler = self.db)
+        self._spdt = spdt.SpotifyDataSet(db_handler = self.db)
 
     def save_full_tracks_to_db(self, full_tracks: tk.model.ModelList[tk.model.FullTrack]) -> None:
         """

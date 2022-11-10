@@ -1,6 +1,5 @@
 /* Schema for Spotify Data DB
  * --------------------------
- * 
  * This script creates all needed tables for storing my Spotify Data 
  * in a normalized and convenient way.
  * It also defines additional indexes, views, triggers, etc., required
@@ -17,7 +16,6 @@
  * More info here: 
  * https://www.sqlite.org/lang_createtable.html#the_primary_key
  * https://www.sqlite.org/stricttables.html
- * 
  */
 
 -- DB Tables definition --

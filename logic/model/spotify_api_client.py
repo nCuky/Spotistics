@@ -1,8 +1,8 @@
 import pandas as pd
 import tekore as tk
 from dataclasses import dataclass
-import log
-import general_utils as ut
+from logic.frontend import log
+from logic import general_utils as ut
 
 
 @dataclass(frozen = True)
@@ -173,7 +173,7 @@ class SpotifyAPIClient:
                 message = log.API_SERVICE_UNAVAILABLE.format(ex)
                 log.write(message = message)
 
-                raise tk.ServiceUnavailable(message = message)
+                raise tk.ServiceUnavailable(message = message, request = ex.request, response = ex.response)
 
         return all_recently_played
 
@@ -392,7 +392,7 @@ class SpotifyAPIClient:
                 message = log.API_SERVICE_UNAVAILABLE.format(ex)
                 log.write(message = message)
 
-                raise tk.ServiceUnavailable(message = message)
+                raise tk.ServiceUnavailable(message = message, request = ex.request, response = ex.response)
 
             except tk.Unauthorised as ex:
                 message = log.API_SERVICE_UNAUTHORIZED.format(ex)

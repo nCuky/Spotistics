@@ -1,9 +1,11 @@
 import pandas as pd
-import log
+from logic.frontend import log
 from datetime import datetime as dt
+
+
 # from typing import Set, List, Dict
 
-@staticmethod
+
 def write_df_to_file(df: pd.DataFrame, file_name: str) -> None:
     """
     Writes a given DataFrame to a file.
@@ -50,13 +52,12 @@ def get_unique_vals_list(values: str | pd.Series | set | list) -> list:
         case list() as values:
             unique_values = list(set(values))
 
-        case other:
+        case _:
             unique_values = []
 
     return unique_values
 
 
-@staticmethod
 def get_unique_dicts(dicts: list[dict]) -> list[dict] | None:
     """
     Keep only the unique **dictionaries** in a list of dicts. Each whole dict is taken as a single "value" to
@@ -78,7 +79,6 @@ def get_unique_dicts(dicts: list[dict]) -> list[dict] | None:
     return unique_dict_list
 
 
-@staticmethod
 def add_to_mapping_of_sets(mapping: dict,
                            key: str,
                            value: str) -> None:
