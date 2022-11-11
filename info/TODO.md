@@ -12,7 +12,7 @@
 - [x] Add "Inserting ____..." and "Fetching ____..." log messages when inserting records into DB.
 - [ ] Don't ask for token when working offline from the DB.
 - [ ] Use [Discogs API](https://github.com/joalla/discogs_client) to fetch an album's **correct** original release year.
-
+- [ ] Why artist **Vulf** is not fetched for the percentage graph?
 ### Ideas for graphs
 
 - [x] Top artists by number of listens per each artist
