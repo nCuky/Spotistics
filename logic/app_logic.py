@@ -162,7 +162,30 @@ class Logic:
     @staticmethod
     def _add_artist_dict_to_list(artist: tk.model.Artist,
                                  all_artists_list: list[dict],
-                                 all_genres_set: set = None) -> None:
+                                 all_genres_set: set = None,
+                                 all_artists_genres: list[dict] = None) -> None:
+        """
+        From a given :class:`tk.model.Artist` object, takes its attributes and adds them to the given
+        list of dictionaries ``all_artists_list``.
+
+        If ``artist`` is a :class:`tk.model.FullArtist`, this also builds a set of Genres' names (independent),
+        and builds another list linking the artist to its genres.
+
+        **This changes the given collections (inplace = True)**.
+
+        Parameters:
+            artist: SimpleArtist or FullArtist object, from which to take the relevant attributes.
+
+            all_artists_list: List of dicts, each dict contains an Artist that is supposed to be saved into the DB
+                later.
+
+            all_genres_set: Set of strings, containing the genre names that are in the artist's attributes.
+
+            all_artists_genres: List of dicts, each dict linking the artist to one of its genres.
+
+        Returns:
+            None - This method changed the given collections.
+        """
         match artist:
             case tk.model.SimpleArtist() as artist:
                 artist_dict_to_insert = {SPDBNM.ARTISTS.ID             : artist.id,
@@ -183,6 +206,8 @@ class Logic:
                 if all_genres_set is not None:
                     for genre in artist.genres:
                         all_genres_set.add(genre)
+                        all_artists_genres.append({SPDBNM.ARTISTS_GENRES.ARTIST_ID : artist.id,
+                                                   SPDBNM.ARTISTS_GENRES.GENRE_NAME: genre})
 
             case tk.model.LocalArtist() as artist:
                 # Not supported at the moment
@@ -223,6 +248,8 @@ class Logic:
             None.
         """
         try:
+            log.write(log.GETTING_ORIGINAL_TRACKS)
+
             full_tracks_mdlist = self.spapi.get_full_tracks(self.spdt.listen_history_df[SPDTNM.TRACK_ID])
 
             self.save_full_tracks_to_db(full_tracks_mdlist)
@@ -253,6 +280,7 @@ class Logic:
         all_linked_albums_list_to_insert = []
         all_artists_list_to_insert = []
         all_genres_set_to_insert = set()
+        all_artists_genres_list_to_insert = []
         all_albums_list_to_insert = []
         all_albums_tracks_list_to_insert = []
         all_artists_albums_list_to_insert = []
@@ -373,6 +401,7 @@ class Logic:
         # I've collected the ID's of only the tracks that are Relinked from other tracks.
         # Here, fetching FullTrack attributes only for those relinked tracks (their IDs were only discovered earlier
         # in the iterated FullTracks list, and now I need the rest of their attributes):
+        log.write(log.GETTING_RELINKED_TRACKS)
         known_full_tracks = self.spapi.get_full_tracks(tracks_ids = known_ids_of_linked_tracks)
 
         for known_full_track in known_full_tracks:
@@ -443,9 +472,11 @@ class Logic:
         for full_artist in full_artists:
             Logic._add_artist_dict_to_list(artist = full_artist,
                                            all_artists_list = all_artists_list_to_insert,
-                                           all_genres_set = all_genres_set_to_insert)
+                                           all_genres_set = all_genres_set_to_insert,
+                                           all_artists_genres = all_artists_genres_list_to_insert)
 
         all_artists_list_unq = utl.get_unique_dicts(all_artists_list_to_insert)
+        all_artists_genres_list_unq = utl.get_unique_dicts(all_artists_genres_list_to_insert)
 
         # Inserting all values to the corresponding DB-tables:
         self.db.insert_listen_history(self.spdt.listen_history_df)
@@ -453,7 +484,8 @@ class Logic:
         self.db.insert_linked_tracks(all_linked_tracks_list_unq)
         self.db.insert_linked_albums(all_linked_albums_list_unq)
         self.db.insert_artists(all_artists_list_unq)
-        self.db.insert_genres([{SPDBNM.GENRES.NAME: genre_name} for genre_name in all_genres_set_to_insert])
+        self.db.insert_genres([{SPDBNM.GENRES.GENRE_NAME: genre_name} for genre_name in all_genres_set_to_insert])
+        self.db.insert_artists_genres(all_artists_genres_list_unq)
         self.db.insert_albums(all_albums_list_unq)
         self.db.insert_albums_tracks(all_albums_tracks_list_unq)
         self.db.insert_artists_albums(all_artists_albums_list_unq)
@@ -675,6 +707,25 @@ class Logic:
                                                 inplace = True)
 
         return artist_tracks_completion_df
+
+    def calc_track_of_the_time_period(self,
+                                      time_period: str = 'month',
+                                      ) -> pd.DataFrame:
+        """
+        Calculates the most-listened track for each time period in the history, according to the given parameter.
+
+        Parameters:
+            time_period: The desired time period during which to measure the most listened track.
+                Possible values: 'month', 'quarter', 'year'.
+
+        Returns:
+            Dataframe with the calculated results.
+        """
+        history_by_time_period = self.get_listen_history_df().copy()
+        history_by_time_period['timestamp_std'] = pd.to_datetime(
+            arg = history_by_time_period.loc[SPDBNM.V_KNOWN_LISTEN_HISTORY.TIMESTAMP],
+            errors = 'raise',
+            yearfirst = True)
 
     def agg_unique_tracks_by_listens(self) -> pd.DataFrame:
         """

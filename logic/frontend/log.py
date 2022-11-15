@@ -25,6 +25,8 @@ FETCHING_RECENTLY_PLAYED = "Fetching the current user's Recently Played Tracks..
 RECENTLY_PLAYED_FETCHED = "The current user's Recently Played Tracks were successfully fetched."
 FETCHING_LISTEN_HISTORY = "Fetching the listen history..."
 LISTEN_HISTORY_FETCHED = "Listen history was successfully fetched."
+GETTING_ORIGINAL_TRACKS = "Now getting the original Tracks."
+GETTING_RELINKED_TRACKS = "Now getting the Relinked Tracks."
 
 # Inserting:
 INSERTING_RECORD = "Inserting a single record into DB-table {0}..."

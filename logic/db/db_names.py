@@ -78,8 +78,7 @@ class ALBUMS_TRACKS:
 class GENRES:
     TBL_NAME = 'genres'
 
-    ID = 'genre_id'
-    NAME = 'name'
+    GENRE_NAME = 'genre_name'
     CREATED_AT = 'created_at'
     UPDATED_AT = 'updated_at'
 
@@ -89,7 +88,7 @@ class ARTISTS_GENRES:
     TBL_NAME = 'artists_genres'
 
     ARTIST_ID = 'artist_id'
-    GENRE_ID = 'genre_id'
+    GENRE_NAME = 'genre_name'
     CREATED_AT = 'created_at'
     UPDATED_AT = 'updated_at'
 

@@ -6,24 +6,24 @@ from pathlib import Path
 from logic.frontend import log
 from logic.db import db
 import json
-from logic.model.sp_data_set_names import SPDT as spdtnm
+from logic.model.sp_data_set_names import SPDT as SPDTNM
 
 
 class SpotifyDataSet:
     """
     Manages Spotify Data as DataFrame.
     """
-    TRACK_ID_COMBO_COL = [spdtnm.TRACK_NAME,
-                          spdtnm.ALBUM_ARTIST_NAME,
-                          spdtnm.ALBUM_NAME]
+    TRACK_ID_COMBO_COL = [SPDTNM.TRACK_NAME,
+                          SPDTNM.ALBUM_ARTIST_NAME,
+                          SPDTNM.ALBUM_NAME]
 
-    COLUMNS_TO_RENAME = {'ts'                               : spdtnm.TIMESTAMP,
-                         'spotify_track_uri'                : spdtnm.TRACK_URI,
-                         'master_metadata_track_name'       : spdtnm.TRACK_NAME,
-                         'master_metadata_album_artist_name': spdtnm.ALBUM_ARTIST_NAME,
-                         'master_metadata_album_album_name' : spdtnm.ALBUM_NAME}
+    COLUMNS_TO_RENAME = {'ts'                               : SPDTNM.TIMESTAMP,
+                         'spotify_track_uri'                : SPDTNM.TRACK_URI,
+                         'master_metadata_track_name'       : SPDTNM.TRACK_NAME,
+                         'master_metadata_album_artist_name': SPDTNM.ALBUM_ARTIST_NAME,
+                         'master_metadata_album_album_name' : SPDTNM.ALBUM_NAME}
 
-    DEFAULT_JSON_FILE_PATH = '../../data/personal_data/raw_json'
+    DEFAULT_JSON_FILE_PATH = 'data/personal_data/raw_json'
     DEFAULT_JSON_FILE_PREFIX = 'endsong'
 
     # region Utility Methods
@@ -53,9 +53,9 @@ class SpotifyDataSet:
 
                     for item in json_data:
                         cleaned_item = item
-                        cleaned_item[spdtnm.PLATFORM] = ''
-                        cleaned_item[spdtnm.IP_ADDRESS] = ''
-                        cleaned_item[spdtnm.USER_AGENT] = ''
+                        cleaned_item[SPDTNM.PLATFORM] = ''
+                        cleaned_item[SPDTNM.IP_ADDRESS] = ''
+                        cleaned_item[SPDTNM.USER_AGENT] = ''
 
                         cleaned_json_data.append(cleaned_item)
 
@@ -132,8 +132,8 @@ class SpotifyDataSet:
 
         # Removing irrelevant columns:
         prepped_df = prepped_df.drop(
-            columns = [spdtnm.IP_ADDRESS, spdtnm.USER_AGENT,
-                       spdtnm.EPISODE_NAME, spdtnm.EPISODE_SHOW_NAME, spdtnm.EPISODE_URI],
+            columns = [SPDTNM.IP_ADDRESS, SPDTNM.USER_AGENT,
+                       SPDTNM.EPISODE_NAME, SPDTNM.EPISODE_SHOW_NAME, SPDTNM.EPISODE_URI],
             inplace = False)
 
         prepped_df = prepped_df.rename(columns = SpotifyDataSet.COLUMNS_TO_RENAME,
@@ -145,14 +145,14 @@ class SpotifyDataSet:
         # 2. Because there are multiple source JSON files, each one of them has its own index starting from 0,
         #    which causes duplicate index values in the final DataFrame.
         #    This is why ignore_index = True is needed here:
-        prepped_df = prepped_df.sort_values(by = [spdtnm.USERNAME, spdtnm.TIMESTAMP, spdtnm.MS_PLAYED],
+        prepped_df = prepped_df.sort_values(by = [SPDTNM.USERNAME, SPDTNM.TIMESTAMP, SPDTNM.MS_PLAYED],
                                             ascending = True,
                                             ignore_index = True,
                                             inplace = False, )
 
         # Removing listen-records with no SpotifyURI (i.e. podcasts episodes, and errors in the data)
         prepped_df = prepped_df.drop(
-            prepped_df.index[prepped_df[spdtnm.TRACK_URI].isnull()], inplace = False)
+            prepped_df.index[prepped_df[SPDTNM.TRACK_URI].isnull()], inplace = False)
 
         SpotifyDataSet.add_track_id_column(prepped_df)
 
@@ -160,12 +160,12 @@ class SpotifyDataSet:
         # exact same timestamp. In a certain timestamp, I want to keep different listened tracks, but remove
         # the same track if played multiple times.
         # Here, I'm keeping only the last ms_played value (should be maximal) of each duplicate-tracks-cluster:
-        prepped_df = prepped_df.drop_duplicates(subset = [spdtnm.TIMESTAMP, spdtnm.USERNAME, spdtnm.TRACK_ID],
+        prepped_df = prepped_df.drop_duplicates(subset = [SPDTNM.TIMESTAMP, SPDTNM.USERNAME, SPDTNM.TRACK_ID],
                                                 keep = 'last', inplace = False)
 
         # Edge-case: Artist "Joey Bada$$" causes errors, because matplotlib interprets '$$' as math text.
         # Replacing all "$$" with "\$\$":
-        prepped_df[spdtnm.ALBUM_ARTIST_NAME] = prepped_df[spdtnm.ALBUM_ARTIST_NAME].replace('\$\$', '\\$\\$',
+        prepped_df[SPDTNM.ALBUM_ARTIST_NAME] = prepped_df[SPDTNM.ALBUM_ARTIST_NAME].replace('\$\$', '\\$\\$',
                                                                                             inplace = False)
 
         return prepped_df
@@ -181,14 +181,14 @@ class SpotifyDataSet:
         Returns:
             An updated DataFrame with additional column 'track_id'.
         """
-        col_idx_to_insert = updated_df.columns.get_loc(spdtnm.TRACK_URI) + 1
+        col_idx_to_insert = updated_df.columns.get_loc(SPDTNM.TRACK_URI) + 1
 
-        track_ids = updated_df[spdtnm.TRACK_URI].replace(to_replace = 'spotify:track:',
+        track_ids = updated_df[SPDTNM.TRACK_URI].replace(to_replace = 'spotify:track:',
                                                          value = '',
                                                          regex = True)
 
         updated_df.insert(loc = col_idx_to_insert,
-                          column = spdtnm.TRACK_ID,
+                          column = SPDTNM.TRACK_ID,
                           value = track_ids)
 
     @staticmethod
@@ -212,16 +212,16 @@ class SpotifyDataSet:
                                  'to'  : ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']}
 
         # Preparing the song's Mode (Modus, i.e. Major (uppercase 'M') / Minor (lowercase 'm'):
-        updated_df[spdtnm.SONG_MODE] = updated_df[spdtnm.SONG_MODE].replace(
+        updated_df[SPDTNM.SONG_MODE] = updated_df[SPDTNM.SONG_MODE].replace(
             to_replace = modes_replacement_dict['from'],
             value = modes_replacement_dict['to'])
 
         # Preparing the song's Key (e.g. 'C#'):
-        updated_df[spdtnm.SONG_KEY] = updated_df[spdtnm.SONG_KEY].replace(
+        updated_df[SPDTNM.SONG_KEY] = updated_df[SPDTNM.SONG_KEY].replace(
             to_replace = keys_replacement_dict['from'],
             value = keys_replacement_dict['to'])
 
-        updated_df[spdtnm.SONG_FULL_KEY] = updated_df[spdtnm.SONG_KEY] + updated_df[spdtnm.SONG_MODE]
+        updated_df[SPDTNM.SONG_FULL_KEY] = updated_df[SPDTNM.SONG_KEY] + updated_df[SPDTNM.SONG_MODE]
 
     # endregion Utility Methods
 
@@ -297,11 +297,11 @@ class SpotifyDataSet:
             DataFrame with the aggregated listen history.
         """
         group_columns_map = {column: 'first' for column in self.listen_history_df.columns}
-        group_columns_map[spdtnm.ALBUM_ARTIST_NAME] = aggfunc
+        group_columns_map[SPDTNM.ALBUM_ARTIST_NAME] = aggfunc
 
-        return self.listen_history_df.groupby([spdtnm.USERNAME,
-                                               spdtnm.TIMESTAMP,
-                                               spdtnm.TRACK_KNOWN_ID],
+        return self.listen_history_df.groupby([SPDTNM.USERNAME,
+                                               SPDTNM.TIMESTAMP,
+                                               SPDTNM.TRACK_KNOWN_ID],
                                               as_index = False).agg(group_columns_map)
 
     def add_track_known_id(self, known_tracks_ids_map: dict) -> None:
@@ -314,17 +314,17 @@ class SpotifyDataSet:
         Returns:
             None.
         """
-        col_idx_to_insert = self.__listen_history_df.columns.get_loc(spdtnm.TRACK_ID) + 1
+        col_idx_to_insert = self.__listen_history_df.columns.get_loc(SPDTNM.TRACK_ID) + 1
 
         # Making sure that any track_id values that are missing in the mapping get mapped to themselves:
-        unique_track_ids = self.__listen_history_df[spdtnm.TRACK_ID].unique()
+        unique_track_ids = self.__listen_history_df[SPDTNM.TRACK_ID].unique()
         updated_map = dict(zip(unique_track_ids, unique_track_ids))
         updated_map.update(known_tracks_ids_map)
 
-        column_known_track_id = self.__listen_history_df[spdtnm.TRACK_ID].map(updated_map)
+        column_known_track_id = self.__listen_history_df[SPDTNM.TRACK_ID].map(updated_map)
 
         self.__listen_history_df.insert(loc = col_idx_to_insert,
-                                        column = spdtnm.TRACK_KNOWN_ID,
+                                        column = SPDTNM.TRACK_KNOWN_ID,
                                         value = column_known_track_id)
 
     def get_distinct_tracks(self) -> pd.DataFrame:
@@ -335,10 +335,10 @@ class SpotifyDataSet:
             DataFrame, containing the unique instance of each track.
         """
         unique_tracks = self.__listen_history_df.drop_duplicates(
-            subset = spdtnm.TRACK_KNOWN_ID,
+            subset = SPDTNM.TRACK_KNOWN_ID,
             keep = 'first')
 
-        unique_tracks.sort_values(by = spdtnm.TIMESTAMP,
+        unique_tracks.sort_values(by = SPDTNM.TIMESTAMP,
                                   ascending = True,
                                   inplace = True)
 

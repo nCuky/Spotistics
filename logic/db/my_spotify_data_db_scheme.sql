@@ -63,13 +63,6 @@ CREATE TABLE IF NOT EXISTS artists (
 	updated_at DATETIME
 );
 
-CREATE TABLE IF NOT EXISTS genres (
-	genre_id INTEGER PRIMARY KEY NOT NULL,
-	name TEXT NOT NULL UNIQUE,
-	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
-	updated_at DATETIME
-);
-
 CREATE TABLE IF NOT EXISTS artists_albums (
 	artist_id TEXT NOT NULL,
 	album_id TEXT NOT NULL,
@@ -91,14 +84,20 @@ CREATE TABLE IF NOT EXISTS albums_tracks (
 	FOREIGN KEY (track_id) REFERENCES tracks(track_id)
 );
 
+CREATE TABLE IF NOT EXISTS genres (
+	genre_name TEXT PRIMARY KEY NOT NULL,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME
+);
+
 CREATE TABLE IF NOT EXISTS artists_genres (
 	artist_id TEXT NOT NULL,
-	genre_id TEXT NOT NULL,
+	genre_name TEXT NOT NULL,
 	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
 	updated_at DATETIME,
-	PRIMARY KEY (artist_id, genre_id),
+	PRIMARY KEY (artist_id, genre_name),
 	FOREIGN KEY (artist_id) REFERENCES artists(artist_id),
-	FOREIGN KEY (genre_id) REFERENCES genres(genre_id)
+	FOREIGN KEY (genre_name) REFERENCES genres(genre_name)
 );
 
 CREATE TABLE IF NOT EXISTS linked_tracks (
@@ -171,7 +170,16 @@ CREATE TRIGGER IF NOT EXISTS trg_update_genres_updated_at
 	BEGIN 
 		UPDATE genres
 			SET updated_at = (datetime(CURRENT_TIMESTAMP, 'localtime'))
-			WHERE genre_id = NEW.genre_id;
+			WHERE genre_name = NEW.genre_name;
+	END;
+
+CREATE TRIGGER IF NOT EXISTS trg_update_artists_genres_updated_at
+	AFTER UPDATE ON artists_genres
+	BEGIN 
+		UPDATE artists_genres
+			SET updated_at = (datetime(CURRENT_TIMESTAMP, 'localtime'))
+			WHERE artist_id = NEW.artist_id
+			  AND genre_name  = NEW.genre_name;
 	END;
 
 CREATE TRIGGER IF NOT EXISTS trg_update_artists_albums_updated_at
@@ -211,9 +219,6 @@ CREATE INDEX IF NOT EXISTS idx_albums_name
 
 CREATE INDEX IF NOT EXISTS idx_albums_release_date
 	ON albums (release_date, release_date_precision);
-
-CREATE INDEX IF NOT EXISTS idx_genres_name
-	ON genres(name);
 
 CREATE INDEX IF NOT EXISTS idx_tracks_listen_history_platform
 	ON tracks_listen_history (platform);
@@ -277,6 +282,15 @@ CREATE VIEW IF NOT EXISTS v_albums_tracks
 	INNER JOIN linked_albums ON linked_albums.linked_from_id = albums_tracks.album_id
 	INNER JOIN linked_tracks ON linked_tracks.linked_from_id = albums_tracks.track_id;
 
+CREATE VIEW IF NOT EXISTS v_artists_genres
+	AS SELECT 	artists_genres.artist_id,
+				artists.name AS artist_name,
+				artists_genres.genre_name 
+	FROM artists_genres
+	INNER JOIN artists ON artists.artist_id = artists_genres.artist_id
+	ORDER BY artist_name ASC,
+			 genre_name ASC;
+	
 CREATE VIEW IF NOT EXISTS v_linked_tracks
 	AS SELECT 	linked_tracks.linked_from_id,
 				linked_tracks.track_known_id,
