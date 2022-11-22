@@ -23,6 +23,25 @@ class TRACKS:
 
 
 @dataclass(frozen = True)
+class TRACKS_AUDIO_FEATURES:
+    TBL_NAME = 'tracks_audio_features'
+
+    TRACK_ID = 'track_id'
+    MUSICAL_KEY = 'musical_key'
+    MUSICAL_MODE = 'musical_mode'
+    TEMPO = 'tempo'
+    TIME_SIGNATURE = 'time_signature'
+    ACOUSTICNESS = 'acousticness'
+    DANCEABILITY = 'danceability'
+    ENERGY = 'energy'
+    INSTRUMENTALNESS = 'instrumentalness'
+    LIVENESS = 'liveness'
+    LOUDNESS = 'loudness'
+    SPEECHINESS = 'speechiness'
+    VALENCE = 'valence'
+
+
+@dataclass(frozen = True)
 class ALBUMS:
     TBL_NAME = 'albums'
 

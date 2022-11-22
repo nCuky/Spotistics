@@ -12,27 +12,33 @@ musical data, and generates plots about my listening habits and musical preferen
 genres per time of day,
 most common musical mode and key, and more.
 
+### Project's Goals
+
+
 ### Prerequisites
 
-1. **[Download your complete Spotify Personal Data](privacy@spotify.com)** (extended streaming history and other
-   technical information),
-   and put it in a folder the app can access, specifically the `endsong.json` files that contain your listening history.
+1. **[Request to download your personal Data from Spotify](mailto:privacy@spotify.com)** - specifically, request to get
+   the **extended streaming history and other technical information for the life of your account**. 
+   
+   This can take up to 30 days (in practice it's usually less than that), so please be patient. When you receive a response, download your data and put it 
+   in a folder the app can access, especially the `endsong.json` files that contain your listening history.
 
-   Sadly, it is **impossible** to fetch the complete listening history of one's Spotify account instantly **on-demand**.
-   The Spotify API allows for only the last 50 recently played tracks to be fetched, and no more.
+   Sadly, it is **impossible** to instantly fetch the complete listening history of one's Spotify account **on-demand**.
+   The Spotify API only allows to fetch the last 50 recently played tracks, and no more. This is a hard limitation 
+   of the API that unfortunately cannot be circumvented. 
    For this reason, the app needs to use a pre-downloaded dataset. Every Spotify user can go to their account's
    [Spotify Privacy Dashboard](https://www.spotify.com/us/account/privacy/#:~:text=Download%20your%20data), and request
    their data in one of two ways:
 
     - Clicking the **Request** button at the bottom of that page, using the automated "Download your Data" tool. This
-      method
-      gives the streaming history **for the past year** and no more, and at the moment **is not supported** by this
-      project;
-    - **Manually contacting** Spotify and requesting the extended streaming history for the life of
-      your account. This method **is preferred** and used by this project, but its major drawback is that
+      method yields the streaming history **for the past year** and no more, and at the moment **is not supported by 
+      this project**;
+    - **[Manually contacting](mailto:privacy@spotify.com)** Spotify and requesting the extended streaming history for 
+      the life of your account. 
+      This method **is preferred** and is used by this project, but its major drawback is that
       it can take up to 30 days to get your data (personally, I received my data after 10 days).
 
-2.
+2. 
 
 ## Authors
 

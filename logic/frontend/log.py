@@ -13,6 +13,8 @@ ATTRS_FETCHED_FOR = "{0} attributes were successfully fetched for {1} {2}."
 
 FETCHING_TRACKS_ATTRS = FETCHING_ATTRS_FOR.format('FullTrack', '{0}', 'tracks')
 TRACKS_ATTRS_FETCHED = ATTRS_FETCHED_FOR.format('FullTrack', '{0}', 'tracks')
+FETCHING_AUDIO_FEATURES_ATTRS = FETCHING_ATTRS_FOR.format('Audio Features', '{0}', 'tracks')
+AUDIO_FEATURES_ATTRS_FETCHED = ATTRS_FETCHED_FOR.format('Audio Features', '{0}', 'tracks')
 FETCHING_ARTISTS_ATTRS = FETCHING_ATTRS_FOR.format('FullArtist', '{0}', 'artists')
 ARTISTS_ATTRS_FETCHED = ATTRS_FETCHED_FOR.format('FullArtist', '{0}', 'artists')
 FETCHING_ALBUMS_ATTRS = FETCHING_ATTRS_FOR.format('FullAlbum', '{0}', 'albums')
@@ -23,8 +25,10 @@ FETCHING_ARTISTS_TRACKS_ATTRS = "Fetching all tracks for {0} artists (might take
 ARTISTS_TRACKS_ATTRS_FETCHED = "All tracks were successfully fetched for {0} artists."
 FETCHING_RECENTLY_PLAYED = "Fetching the current user's Recently Played Tracks..."
 RECENTLY_PLAYED_FETCHED = "The current user's Recently Played Tracks were successfully fetched."
-FETCHING_LISTEN_HISTORY = "Fetching the listen history..."
-LISTEN_HISTORY_FETCHED = "Listen history was successfully fetched."
+READING_LISTEN_HISTORY = "Reading the listen history from the DB..."
+LISTEN_HISTORY_READ = "Listen history was successfully read."
+READING_TRACKS_AUDIO_FEATURES = "Reading tracks audio features from the DB..."
+TRACKS_AUDIO_FEATURES_READ = "Tracks audio features were successfully read."
 GETTING_ORIGINAL_TRACKS = "Now getting the original Tracks."
 GETTING_RELINKED_TRACKS = "Now getting the Relinked Tracks."
 
@@ -50,8 +54,14 @@ DB_OPERATIONAL_ERROR = 'sqlite3.OperationalError: {0}'
 
 def write(message: str) -> None:
     trace = traceback.extract_stack()
-    last_call = next(item.name for item in trace if item.line.startswith('log.write('))
 
-    formatted_msg = "LOG: {0}\t: \tin: {1}\t:\t{2}".format(str(dt.datetime.now()), last_call, message)
+    try:
+        last_call = next(item.name for item in trace if item.line.startswith('log.write('))
+        formatted_msg = "LOG: {0}\t: \tin: {1}\t:\t{2}".format(str(dt.datetime.now()), last_call, message)
+
+    except StopIteration:
+        formatted_msg = 'LOG ERROR'
 
     print(formatted_msg)
+
+

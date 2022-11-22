@@ -31,6 +31,6 @@ class SPDT:
     # Analysis
     TIMES_LISTENED = 'times_listened'
     TOTAL_LISTEN_TIME = 'total_listen_time'
-    SONG_MODE = 'mode'
-    SONG_KEY = 'key'
-    SONG_FULL_KEY = 'full_key'
+    MUSICAL_MODE = 'musical_mode'
+    MUSICAL_KEY = 'musical_key'
+    MUSICAL_FULL_KEY = 'musical_full_key'

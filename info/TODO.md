@@ -18,6 +18,7 @@
 - [x] Top artists by number of listens per each artist
 - [x] Top artists by listening time (total time for each artist)
 - [x] Artist completionist: total listen time to an artist, as percentage of the total time of their discography's tracks.
+- [ ] Top tracks all-time (count of listens) - what audio features predict the listen count 
 - [ ] Pie chart for my top listened genres
 - [ ] Pie chart for my top listened artists
 - [ ] A given artist's tracks collected by track's Key and Mode

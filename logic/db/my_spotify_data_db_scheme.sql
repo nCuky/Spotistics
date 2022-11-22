@@ -63,6 +63,31 @@ CREATE TABLE IF NOT EXISTS artists (
 	updated_at DATETIME
 );
 
+CREATE TABLE IF NOT EXISTS genres (
+	genre_name TEXT PRIMARY KEY NOT NULL,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS tracks_audio_features (
+	track_id TEXT PRIMARY KEY NOT NULL,
+	musical_key TEXT,
+	musical_mode TEXT,
+	tempo REAL,
+	time_signature INTEGER,
+	acousticness REAL,
+	danceability REAL,
+	energy REAL,
+	instrumentalness REAL,
+	liveness REAL,
+	loudness REAL,
+	speechiness REAL,
+	valence REAL,
+	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+	updated_at DATETIME,
+	FOREIGN KEY (track_id) REFERENCES tracks(track_id)
+);
+
 CREATE TABLE IF NOT EXISTS artists_albums (
 	artist_id TEXT NOT NULL,
 	album_id TEXT NOT NULL,
@@ -82,12 +107,6 @@ CREATE TABLE IF NOT EXISTS albums_tracks (
 	PRIMARY KEY (album_id, track_id),
 	FOREIGN KEY (album_id) REFERENCES albums(album_id),
 	FOREIGN KEY (track_id) REFERENCES tracks(track_id)
-);
-
-CREATE TABLE IF NOT EXISTS genres (
-	genre_name TEXT PRIMARY KEY NOT NULL,
-	created_at DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
-	updated_at DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS artists_genres (
@@ -173,6 +192,14 @@ CREATE TRIGGER IF NOT EXISTS trg_update_genres_updated_at
 			WHERE genre_name = NEW.genre_name;
 	END;
 
+CREATE TRIGGER IF NOT EXISTS trg_update_tracks_audio_features_updated_at
+	AFTER UPDATE ON tracks_audio_features
+	BEGIN 
+		UPDATE tracks_audio_features 
+			SET updated_at = (datetime(CURRENT_TIMESTAMP, 'localtime'))
+			WHERE track_id = NEW.track_id;
+	END;
+
 CREATE TRIGGER IF NOT EXISTS trg_update_artists_genres_updated_at
 	AFTER UPDATE ON artists_genres
 	BEGIN 
@@ -254,6 +281,11 @@ CREATE VIEW IF NOT EXISTS v_tracks
 	LEFT OUTER JOIN linked_tracks ON linked_tracks.track_known_id = tracks.track_id
 								  --AND linked_tracks.is_linked = TRUE
 	ORDER BY name ASC;
+
+CREATE VIEW IF NOT EXISTS v_genres
+	AS SELECT genres.genre_name 
+	FROM genres
+	ORDER BY genre_name ASC;
 
 CREATE VIEW IF NOT EXISTS v_artists_albums
 	AS SELECT artists_albums.artist_id,

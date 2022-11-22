@@ -23,6 +23,17 @@ class SpotifyDataSet:
                          'master_metadata_album_artist_name': SPDTNM.ALBUM_ARTIST_NAME,
                          'master_metadata_album_album_name' : SPDTNM.ALBUM_NAME}
 
+    MUSICAL_KEY_MAP = dict(zip(np.arange(start = 0, stop = 12, step = 1),
+                               ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']))
+
+    MUSICAL_MODE_MAP = {0: 'm',
+                        1: 'M'}
+
+    # keys_replacement_dict = {'from': np.arange(start = 0, stop = 12, step = 1),
+    #                          'to'  : ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']}
+    # modes_replacement_dict = {'from': [0, 1],
+    #                           'to'  : ['m', 'M']}
+
     DEFAULT_JSON_FILE_PATH = 'data/personal_data/raw_json'
     DEFAULT_JSON_FILE_PREFIX = 'endsong'
 
@@ -192,7 +203,7 @@ class SpotifyDataSet:
                           value = track_ids)
 
     @staticmethod
-    def prepare_audio_analysis_data(updated_df: pd.DataFrame) -> None:
+    def prepare_audio_features_data(updated_df: pd.DataFrame) -> None:
         """
         Prepares a given **Audio Features** DataFrame for human readability:
         Recodes key and mode fields to accepted musical terminology letters.
@@ -205,23 +216,15 @@ class SpotifyDataSet:
         Returns:
             None (The given DataFrame is changed inplace).
         """
-        modes_replacement_dict = {'from': [0, 1],
-                                  'to'  : ['m', 'M']}
-
-        keys_replacement_dict = {'from': np.arange(start = 0, stop = 12, step = 1),
-                                 'to'  : ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']}
-
         # Preparing the song's Mode (Modus, i.e. Major (uppercase 'M') / Minor (lowercase 'm'):
-        updated_df[SPDTNM.SONG_MODE] = updated_df[SPDTNM.SONG_MODE].replace(
-            to_replace = modes_replacement_dict['from'],
-            value = modes_replacement_dict['to'])
+        updated_df[SPDTNM.MUSICAL_MODE] = updated_df[SPDTNM.MUSICAL_MODE].map(SpotifyDataSet.MUSICAL_MODE_MAP,
+                                                                              na_action = None)
 
         # Preparing the song's Key (e.g. 'C#'):
-        updated_df[SPDTNM.SONG_KEY] = updated_df[SPDTNM.SONG_KEY].replace(
-            to_replace = keys_replacement_dict['from'],
-            value = keys_replacement_dict['to'])
+        updated_df[SPDTNM.MUSICAL_KEY] = updated_df[SPDTNM.MUSICAL_KEY].map(SpotifyDataSet.MUSICAL_KEY_MAP,
+                                                                            na_action = None)
 
-        updated_df[SPDTNM.SONG_FULL_KEY] = updated_df[SPDTNM.SONG_KEY] + updated_df[SPDTNM.SONG_MODE]
+        updated_df[SPDTNM.MUSICAL_FULL_KEY] = updated_df[SPDTNM.MUSICAL_KEY] + updated_df[SPDTNM.MUSICAL_MODE]
 
     # endregion Utility Methods
 
@@ -327,9 +330,12 @@ class SpotifyDataSet:
                                         column = SPDTNM.TRACK_KNOWN_ID,
                                         value = column_known_track_id)
 
-    def get_distinct_tracks(self) -> pd.DataFrame:
+    def get_distinct_tracks(self, sort: bool = True) -> pd.DataFrame:
         """
         Return distinct tracks, based on the KnownTrackID column (must make sure beforehand that it exists!).
+
+        Parameters:
+            sort: Whether to sort the DataFrame by the timestamp.
 
         Returns:
             DataFrame, containing the unique instance of each track.
@@ -338,8 +344,9 @@ class SpotifyDataSet:
             subset = SPDTNM.TRACK_KNOWN_ID,
             keep = 'first')
 
-        unique_tracks.sort_values(by = SPDTNM.TIMESTAMP,
-                                  ascending = True,
-                                  inplace = True)
+        if sort:
+            unique_tracks.sort_values(by = SPDTNM.TIMESTAMP,
+                                      ascending = True,
+                                      inplace = True)
 
         return unique_tracks

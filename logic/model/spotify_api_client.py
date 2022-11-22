@@ -533,7 +533,7 @@ class SpotifyAPIClient:
         return full_albums
 
     def get_tracks_audio_features(self,
-                                  tracks_ids: list[str]) -> tk.model.ModelList[tk.model.AudioFeatures]:
+                                  tracks_ids: str | set | list | pd.Series) -> tk.model.ModelList[tk.model.AudioFeatures]:
         """
         Returns :class:`tk.model.AudioFeatures` for the given track(s).
 
@@ -545,7 +545,31 @@ class SpotifyAPIClient:
         """
         self.validate_connection()
 
-        all_tracks_features = self.client.tracks_audio_features(track_ids = ut.get_unique_vals_list(tracks_ids))
+        unique_tracks_list = ut.get_unique_vals_list(tracks_ids)
+        all_tracks_features = None
+
+        with self.client.token_as(self.user_token):
+            log.write(message = log.FETCHING_AUDIO_FEATURES_ATTRS.format(len(unique_tracks_list)))
+
+            try:
+                # Calling the API to get Audio Features for the given tracks' ID's.
+                # client.tracks_audio_features() is chunked, meaning a single call returns *all* the desired results
+                # without paging.
+                all_tracks_features = self.client.tracks_audio_features(track_ids = unique_tracks_list)
+
+                log.write(message = log.AUDIO_FEATURES_ATTRS_FETCHED.format(len(all_tracks_features)))
+
+            except tk.ServiceUnavailable as ex:
+                message = log.API_SERVICE_UNAVAILABLE.format(ex)
+                log.write(message = message)
+
+                raise tk.ServiceUnavailable(message = message, request = ex.request, response = ex.response)
+
+            except tk.Unauthorised as ex:
+                message = log.API_SERVICE_UNAUTHORIZED.format(ex)
+                log.write(message = message)
+
+                raise tk.Unauthorised(message = message, request = ex.request, response = ex.response)
 
         return all_tracks_features
 
@@ -589,7 +613,7 @@ class SpotifyAPIClient:
         result = []
 
         for track in tracks_audio_features:
-            result.append(getattr(track.time_signature, audio_feature, None))
+            result.append(getattr(track, audio_feature, None))
 
         return result
 
@@ -626,25 +650,6 @@ class SpotifyAPIClient:
                 tracks_analysis.append(self.client.track_audio_analysis(track_id = track_id))
 
         return tracks_analysis
-
-    # def create_df_full_tracks(self, tracks_items: list,
-    #                           audio_features_names: list,
-    #                           limit = MAX_TRACKS_FOR_FEATURES) -> pd.DataFrame:
-    #     self.validate_connection()
-    #
-    #     # tracks_with_features = {'track_name': get_tracks_names(tracks_items)}
-    #     #
-    #     # test_artists_list = get_tracks_artists(tracks_items)
-    #     #
-    #     # tracks_with_features['artist'] =
-    #     #
-    #     # for feat_name in audio_features_names:
-    #     #     # Inserting a new column, titled feat_name, containing a list of all the audio features for all the tracks:
-    #     #     tracks_with_features[feat_name] = self.get_specific_audio_feature(tracks_items,
-    #     #                                                                       audio_feature = feat_name,
-    #     #                                                                       limit = limit)
-    #     #
-    # return pd.DataFrame(data = tracks_with_features)
 
     def get_track_known_id_map(self,
                                full_tracks: tk.model.ModelList[tk.model.FullTrack],

@@ -1,4 +1,4 @@
-from logic.app_logic import Logic as lg
+from logic.app_logic import Logic as Lg
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import seaborn as sns
@@ -17,7 +17,7 @@ class Defaults:
     font_title['size'] = 15
 
 
-def top_artists_by_listen_count(logic: lg, top_artists_amount = 50) -> None:
+def top_artists_by_listen_count(logic: Lg, top_artists_amount = 50) -> None:
     """
     Plots a graph showing the Top Artists, determined by the total number of times each artist's tracks were listened.
 
@@ -48,7 +48,7 @@ def top_artists_by_listen_count(logic: lg, top_artists_amount = 50) -> None:
     plt.show()
 
 
-def top_artists_by_total_listen_time(logic: lg, top_artists_amount = 30) -> None:
+def top_artists_by_total_listen_time(logic: Lg, top_artists_amount = 30) -> None:
     """
     Plots a graph showing the Top Artists, determined by the total listen time of each artist's tracks.
 
@@ -84,7 +84,7 @@ def top_artists_by_total_listen_time(logic: lg, top_artists_amount = 30) -> None
     plt.show()
 
 
-def top_artists_albums_completion_percentage(logic: lg,
+def top_artists_albums_completion_percentage(logic: Lg,
                                              top_artists_amount = 10,
                                              min_track_listen_percentage = 0.75) -> None:
     """
@@ -151,3 +151,21 @@ def top_artists_albums_completion_percentage(logic: lg,
 
     sns.set_style('darkgrid')
     plt.show()
+
+
+def top_tracks_audio_features(logic: Lg,
+                              top_tracks_amount = 30) -> None:
+    """
+    Plots a graph showing the AudioFeatures that are common among the top tracks
+    (top tracks are determined by total listen time to each track).
+
+    Parameters:
+        logic: Main app's logic object.
+
+        top_tracks_amount: Amount of tracks to be considered "Top Tracks" for displaying.
+
+    Returns:
+        None.
+    """
+    top_tracks_features = logic.calc_audio_features_for_top_tracks(top_tracks_amount)
+

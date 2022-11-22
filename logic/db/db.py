@@ -5,6 +5,7 @@ import tekore as tk
 from logic.frontend import log
 from logic.model.sp_data_set_names import SPDT as SPDTNM
 from logic.db import db_names as SPDBNM
+from logic import general_utils as utl
 
 
 class DB:
@@ -306,6 +307,36 @@ class DB:
                                      SPDBNM.TRACKS.PREVIEW_URL],
                     commit = commit)
 
+    def insert_tracks_audio_features(self, tracks_features_values: dict | list[dict], commit: bool = False) -> None:
+        """
+        Inserts single or multiple tracks' audio features values to the **Tracks Audio Features** DB table.
+
+        Parameters:
+            tracks_features_values: Dictionary, or a List of dicts, each dict containing a Track with
+                all its Audio Features.
+
+            commit: Whether to commit the operation.
+
+        Returns:
+            None.
+        """
+        self.insert(table_name = SPDBNM.TRACKS_AUDIO_FEATURES.TBL_NAME,
+                    values = tracks_features_values,
+                    columns_names = [SPDBNM.TRACKS_AUDIO_FEATURES.TRACK_ID,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.MUSICAL_KEY,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.MUSICAL_MODE,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.TEMPO,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.TIME_SIGNATURE,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.ACOUSTICNESS,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.DANCEABILITY,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.ENERGY,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.INSTRUMENTALNESS,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.LIVENESS,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.LOUDNESS,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.SPEECHINESS,
+                                     SPDBNM.TRACKS_AUDIO_FEATURES.VALENCE],
+                    commit = commit)
+
     def insert_artists(self, artists_values: dict | list[dict], commit: bool = False) -> None:
         """
         Inserts single or multiple Artists' values to the **Artists** DB-table.
@@ -509,11 +540,54 @@ class DB:
                     FROM {SPDBNM.V_KNOWN_LISTEN_HISTORY.VIEW_NAME};
                     """
 
-        log.write(log.FETCHING_LISTEN_HISTORY)
+        log.write(log.READING_LISTEN_HISTORY)
         listen_history_df = pd.read_sql_query(sql = query, con = self.connection)
 
-        log.write(log.LISTEN_HISTORY_FETCHED)
+        log.write(log.LISTEN_HISTORY_READ)
 
         return listen_history_df
+
+    def get_tracks_audio_features(self,
+                                  tracks_ids: str | set | list | pd.Series = None) -> pd.DataFrame:
+        """
+        Returns the AudioFeatures for the requested tracks, or for all the tracks in the DB.
+
+        Parameters:
+            tracks_ids: IDs of the desired tracks to get AudioFeatures for. If empty, reads all tracks.
+
+        Returns:
+            DataFrame with the AudioFeatures for the requested track(s).
+        """
+        query = f"""SELECT
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.TRACK_ID},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.MUSICAL_KEY},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.MUSICAL_MODE},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.TEMPO},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.TIME_SIGNATURE},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.ACOUSTICNESS},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.DANCEABILITY},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.ENERGY},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.INSTRUMENTALNESS},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.LIVENESS},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.LOUDNESS},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.SPEECHINESS},
+                    {SPDBNM.TRACKS_AUDIO_FEATURES.VALENCE}
+                    FROM {SPDBNM.TRACKS_AUDIO_FEATURES.TBL_NAME}
+                    """
+
+        unique_tracks_list = utl.get_unique_vals_list(tracks_ids)
+
+        if unique_tracks_list is None or len(unique_tracks_list) == 0:
+            query = f"{query};"
+
+        else:
+            values = ', '.join(f"'{track_id}'" for track_id in unique_tracks_list)
+            query = f"""{query} WHERE {SPDBNM.TRACKS_AUDIO_FEATURES.TRACK_ID} IN ({values});"""
+
+        log.write(log.READING_TRACKS_AUDIO_FEATURES)
+        tracks_features_df = pd.read_sql_query(sql = query, con = self.connection)
+        log.write(log.TRACKS_AUDIO_FEATURES_READ)
+
+        return tracks_features_df
 
     # endregion Selection Logic

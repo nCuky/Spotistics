@@ -1,7 +1,8 @@
 from logic.model.spotify_api_client import SpotifyAPIClient as spapi
 from logic import general_utils as utl
-from logic.db import db_names as SPDBNM, db
-from logic.model import sp_data_set as spdt
+from logic.db.db import DB
+from logic.db import db_names as SPDBNM
+from logic.model.sp_data_set import SpotifyDataSet
 from logic.model.sp_data_set_names import SPDT as SPDTNM
 from logic.frontend import plotting_names as PLTNM, log
 import numpy as np
@@ -11,8 +12,18 @@ import tekore as tk
 
 class Logic:
     """
-    The app's main Logic. Can be used for initializing the dataset and DB, fetching data, or for performing calculations
-    on it.
+    Main class for the app's logic. Used for initializing the dataset and the DB, for fetching data,
+    and for performing calculations and aggregations on the data.
+
+    Attributes:
+        _spdt: SpotifyDataSet
+            Represents the user's listen data and other Spotify data.
+
+        _spapi: SpotifyAPIClient
+            Client for accessing the Spotify API.
+
+        _db: DB
+            Handles the local database.
     """
 
     # region Utility Methods
@@ -38,7 +49,7 @@ class Logic:
         Returns:
             None
         """
-        spdt.SpotifyDataSet.clean_json_for_public_repo()
+        SpotifyDataSet.clean_json_for_public_repo()
 
     # region Saving data
 
@@ -59,23 +70,61 @@ class Logic:
         Returns:
             None - This method changed the given collection.
         """
-        # Building a named dictionary from the given FullTrack:
-        track_dict_to_insert = {SPDBNM.TRACKS.ID          : full_track.id,
-                                SPDBNM.TRACKS.NAME        : full_track.name,
-                                SPDBNM.TRACKS.DURATION_MS : full_track.duration_ms,
-                                SPDBNM.TRACKS.DISC_NUMBER : full_track.disc_number,
-                                SPDBNM.TRACKS.TRACK_NUMBER: full_track.track_number,
-                                SPDBNM.TRACKS.EXPLICIT    : full_track.explicit,
-                                SPDBNM.TRACKS.POPULARITY  : full_track.popularity,
-                                SPDBNM.TRACKS.IS_LOCAL    : full_track.is_local,
-                                SPDBNM.TRACKS.IS_PLAYABLE : full_track.is_playable,
-                                SPDBNM.TRACKS.ISRC        : full_track.external_ids['isrc'] if len(
-                                    full_track.external_ids) > 0 else None,
-                                SPDBNM.TRACKS.HREF        : full_track.href,
-                                SPDBNM.TRACKS.URI         : full_track.uri,
-                                SPDBNM.TRACKS.PREVIEW_URL : full_track.preview_url}
+        if full_track is not None:
+            # Building a named dictionary from the given FullTrack:
+            track_dict_to_insert = {SPDBNM.TRACKS.ID          : full_track.id,
+                                    SPDBNM.TRACKS.NAME        : full_track.name,
+                                    SPDBNM.TRACKS.DURATION_MS : full_track.duration_ms,
+                                    SPDBNM.TRACKS.DISC_NUMBER : full_track.disc_number,
+                                    SPDBNM.TRACKS.TRACK_NUMBER: full_track.track_number,
+                                    SPDBNM.TRACKS.EXPLICIT    : full_track.explicit,
+                                    SPDBNM.TRACKS.POPULARITY  : full_track.popularity,
+                                    SPDBNM.TRACKS.IS_LOCAL    : full_track.is_local,
+                                    SPDBNM.TRACKS.IS_PLAYABLE : full_track.is_playable,
+                                    SPDBNM.TRACKS.ISRC        : full_track.external_ids['isrc'] if len(
+                                        full_track.external_ids) > 0 else None,
+                                    SPDBNM.TRACKS.HREF        : full_track.href,
+                                    SPDBNM.TRACKS.URI         : full_track.uri,
+                                    SPDBNM.TRACKS.PREVIEW_URL : full_track.preview_url}
 
-        all_tracks_list.append(track_dict_to_insert)
+            all_tracks_list.append(track_dict_to_insert)
+
+    @staticmethod
+    def _add_track_audio_features_to_list_to_save(track_features: tk.model.AudioFeatures,
+                                                  all_tracks_audio_features_list: list[dict]) -> None:
+        """
+        From a given :class:`tk.model.AudioFeatures` object, takes its attributes and adds them to a given
+        list of named dictionaries.
+
+        **This changes the given collection (inplace = True)**.
+
+        Parameters:
+            track_features: AudioFeatures object, from which to take the relevant attributes.
+
+            all_tracks_audio_features_list: List of all tracks' audio features that are supposed
+            to later be saved into the DB.
+
+        Returns:
+            None - This method changed the given collection.
+        """
+        if track_features is not None:
+            # Building a named dictionary from the given FullTrack:
+            track_features_dict_to_insert = {
+                SPDBNM.TRACKS_AUDIO_FEATURES.TRACK_ID        : track_features.id,
+                SPDBNM.TRACKS_AUDIO_FEATURES.MUSICAL_KEY     : SpotifyDataSet.MUSICAL_KEY_MAP.get(track_features.key),
+                SPDBNM.TRACKS_AUDIO_FEATURES.MUSICAL_MODE    : SpotifyDataSet.MUSICAL_MODE_MAP.get(track_features.mode),
+                SPDBNM.TRACKS_AUDIO_FEATURES.TEMPO           : track_features.tempo,
+                SPDBNM.TRACKS_AUDIO_FEATURES.TIME_SIGNATURE  : track_features.time_signature,
+                SPDBNM.TRACKS_AUDIO_FEATURES.ACOUSTICNESS    : track_features.acousticness,
+                SPDBNM.TRACKS_AUDIO_FEATURES.DANCEABILITY    : track_features.danceability,
+                SPDBNM.TRACKS_AUDIO_FEATURES.ENERGY          : track_features.energy,
+                SPDBNM.TRACKS_AUDIO_FEATURES.INSTRUMENTALNESS: track_features.instrumentalness,
+                SPDBNM.TRACKS_AUDIO_FEATURES.LIVENESS        : track_features.liveness,
+                SPDBNM.TRACKS_AUDIO_FEATURES.LOUDNESS        : track_features.loudness,
+                SPDBNM.TRACKS_AUDIO_FEATURES.SPEECHINESS     : track_features.speechiness,
+                SPDBNM.TRACKS_AUDIO_FEATURES.VALENCE         : track_features.valence}
+
+            all_tracks_audio_features_list.append(track_features_dict_to_insert)
 
     @staticmethod
     def _add_album_to_list_to_save(full_track: tk.model.FullTrack,
@@ -236,8 +285,8 @@ class Logic:
 
     def collect_data_and_save(self, to_csv_also: bool = False):
         """
-        Collects all listen history, extracts models' (tracks, artists, etc.) information from it
-        and saves it in the local DB.
+        Collects all listen history, extracts its data into models (tracks, artists, etc.),
+        fetches additional data from the API, and saves it all in the local DB.
         Then, replaces the inner :class:`SPDT.SpotifyDataSet` dataset manager with a new manager
         containing all the updated data.
 
@@ -247,36 +296,9 @@ class Logic:
         Returns:
             None.
         """
-        try:
-            log.write(log.GETTING_ORIGINAL_TRACKS)
-
-            full_tracks_mdlist = self.spapi.get_full_tracks(self.spdt.listen_history_df[SPDTNM.TRACK_ID])
-
-            self.save_full_tracks_to_db(full_tracks_mdlist)
-
-        except tk.ServiceUnavailable as ex:
-            log.write(log.API_SERVICE_UNAVAILABLE.format(ex))
-
-            return
-
-        if to_csv_also:
-            self.save_listen_history_to_csv('known_listen_history_{0}.csv')
-
-        self._spdt = spdt.SpotifyDataSet(db_handler = self.db)
-
-    def save_full_tracks_to_db(self, full_tracks: tk.model.ModelList[tk.model.FullTrack]) -> None:
-        """
-        From a given :class:`tk.model.ModelList` of :class:`tk.model.FullTrack` objects,
-        extracts the models' data, fetches additional data from the API, and saves it into the DB.
-
-        Parameters:
-            full_tracks: A ModelList of FullTrack objects.
-
-        Returns:
-            None.
-        """
         all_tracks_list_to_insert = []
         all_linked_tracks_list_to_insert = []
+        all_tracks_features_list_to_insert = []
         all_linked_albums_list_to_insert = []
         all_artists_list_to_insert = []
         all_genres_set_to_insert = set()
@@ -290,207 +312,239 @@ class Logic:
         known_ids_of_linked_tracks = set()
         map_linked_to_known_tracks = {}
         map_linked_to_known_albums = {}
+        all_known_tracks_ids_set = set()
         all_suspected_album_ids = set()
         all_albums_ids_set = set()
         all_artists_ids_set = set()
 
-        for full_track in full_tracks:
-            Logic._add_track_to_list_to_save(full_track, all_tracks_list_to_insert)
+        try:
+            log.write(log.GETTING_ORIGINAL_TRACKS)
 
-            # A Track sometimes change its ID, because of many reasons. The old TrackID is then regarded as
-            # a 'LinkedFrom' Track, which is Relinked to its current, up-to-date, 'Known' Track, this linkage can be
-            # fetched from the API. The problem is, *Albums* too can be Relinked, but the API does not supply this
-            # information in a direct or confident way.
-            # I need this linkage, OldAlbumID <-> KnownAlbumID, to correctly count the unique albums
-            # in the listen history.
-            #
-            # The API *does* give me the following information (in the ``full_tracks`` object):
-            # 1. Linkage between an obsolete LinkedFrom TrackID and its 'uncertain but suspected as obsolete' AlbumID;
-            # 2. Linkage between an obsolete LinkedFrom TrackID and its up-to-date 'Known' TrackID;
-            # 3. Linkage between a Known TrackID and its up-to-date AlbumID.
-            #
-            # Therefore, my plan is to go along the link chain as follows:
-            # 1. Collect all those links: LinkedFromTrackIDs <-> OldAlbumIDs,
-            #                             LinkedFromTrackIDs <-> KnownTrackIDs,
-            #                             KnownTrackIDs <-> KnownAlbumIDs;
-            # 2. For each OldAlbumID:
-            # 2.a. Find its tracks in the list of LinkedFromTrackIDs;
-            # 2.b. For the found LinkedFromTrackID, get the KnownTrackID;
-            # 2.c. For the found KnownTrackID, get the KnownAlbumID and write it for the current OldAlbumID.
-            # 3. End up with a mapping of each OldAlbumID to its KnownAlbumID, and
-            #    insert it to the DB table `linked_albums`.
-            if full_track.linked_from is None:
-                # --Non-Linked track, which means its Album is also not Linked--
-                # "Fake-linking" the Track ID to itself, to maintain consistency later in the DB:
-                linked_track_dict_to_insert = {SPDBNM.LINKED_TRACKS.FROM_ID    : full_track.id,
-                                               SPDBNM.LINKED_TRACKS.RELINKED_ID: full_track.id}
+            full_tracks = self.spapi.get_full_tracks(self.spdt.listen_history_df[SPDTNM.TRACK_ID])
 
-                # "Fake-linking" the Album ID to itself, to maintain consistency later in the DB:
-                linked_album_dict_to_insert = {SPDBNM.LINKED_ALBUMS.FROM_ID    : full_track.album.id,
-                                               SPDBNM.LINKED_ALBUMS.RELINKED_ID: full_track.album.id}
+            for full_track in full_tracks:
+                Logic._add_track_to_list_to_save(full_track, all_tracks_list_to_insert)
 
-                all_linked_albums_list_to_insert.append(linked_album_dict_to_insert)
+                # A Track sometimes change its ID, because of many reasons. The old TrackID is then regarded as
+                # a 'LinkedFrom' Track, which is Relinked to its current, up-to-date, 'Known' Track, this linkage can be
+                # fetched from the API. The problem is, *Albums* too can be Relinked, but the API does not supply this
+                # information in a direct or confident way.
+                # I need this linkage, OldAlbumID <-> KnownAlbumID, to correctly count the unique albums
+                # in the listen history.
+                #
+                # The API *does* give me the following information (in the ``full_tracks`` object):
+                # 1. Linkage between an obsolete LinkedFrom TrackID and its 'suspected as obsolete' AlbumID;
+                # 2. Linkage between an obsolete LinkedFrom TrackID and its up-to-date 'Known' TrackID;
+                # 3. Linkage between a Known TrackID and its up-to-date AlbumID.
+                #
+                # Therefore, my plan is to go along the link chain as follows:
+                # 1. Collect all those links: LinkedFromTrackIDs <-> OldAlbumIDs,
+                #                             LinkedFromTrackIDs <-> KnownTrackIDs,
+                #                             KnownTrackIDs <-> KnownAlbumIDs;
+                # 2. For each OldAlbumID:
+                # 2.a. Find its tracks in the list of LinkedFromTrackIDs;
+                # 2.b. For the found LinkedFromTrackID, get the KnownTrackID;
+                # 2.c. For the found KnownTrackID, get the KnownAlbumID and write it for the current OldAlbumID.
+                # 3. End up with a mapping of each OldAlbumID to its KnownAlbumID, and
+                #    insert it to the DB table `linked_albums`.
+                if full_track.linked_from is None:
+                    # The track is considered as Known, as it is:
+                    all_known_tracks_ids_set.add(full_track.id)
 
-                # Assigning the Track ID to the Album ID:
-                album_track_dict_to_insert = {SPDBNM.ALBUMS_TRACKS.ALBUM_ID: full_track.album.id,
-                                              SPDBNM.ALBUMS_TRACKS.TRACK_ID: full_track.id}
+                    # --Non-Linked track, which means its Album is also not Linked--
+                    # "Fake-linking" the Track ID to itself, to maintain consistency later in the DB:
+                    linked_track_dict_to_insert = {SPDBNM.LINKED_TRACKS.FROM_ID    : full_track.id,
+                                                   SPDBNM.LINKED_TRACKS.RELINKED_ID: full_track.id}
 
-                # A track *is not supposed* to belong to more than one album. I hope I don't override
-                # an existing TrackID Key with a different AlbumID Value:
-                map_known_tracks_to_albums[full_track.id] = full_track.album.id
-
-                utl.add_to_mapping_of_sets(mapping = map_albums_to_tracks,
-                                           key = full_track.album.id,
-                                           value = full_track.id)
-
-                map_linked_to_known_tracks[full_track.id] = full_track.id
-
-                # If the current FullTrack object is for the KnownTrackID of a track that was previously determined as
-                # relinked to another LinkedFromTrack, it means that this FullTrack object contains the up-to-date
-                # KnownAlbumID I need. Thus, I don't need to fetch it later, so I remove it:
-                if known_ids_of_linked_tracks is not None and full_track.id in known_ids_of_linked_tracks:
-                    known_ids_of_linked_tracks.discard(full_track.id)
-
-            else:
-                # --Linked Track, which means its Album is also suspected as Linked--
-                # Linking the Track's LinkedFrom ID to the Track ID:
-                linked_track_dict_to_insert = {SPDBNM.LINKED_TRACKS.FROM_ID    : full_track.linked_from.id,
-                                               SPDBNM.LINKED_TRACKS.RELINKED_ID: full_track.id}
-
-                # Linking the (suspected as linked) Album ID to the Track's LinkedFrom ID:
-                album_track_dict_to_insert = {SPDBNM.ALBUMS_TRACKS.ALBUM_ID: full_track.album.id,
-                                              SPDBNM.ALBUMS_TRACKS.TRACK_ID: full_track.linked_from.id}
-
-                utl.add_to_mapping_of_sets(mapping = map_albums_to_tracks,
-                                           key = full_track.album.id,
-                                           value = full_track.linked_from.id)
-
-                map_linked_to_known_tracks[full_track.linked_from.id] = full_track.id
-
-                known_ids_of_linked_tracks.add(full_track.id)
-
-                # Trying to use a previously-saved link, to build the mapping during the loop:
-                known_album_id = map_linked_to_known_albums.get(full_track.album.id)
-
-                if known_album_id is None:
-                    # Trying to go along the link chain:
-                    track_known_id = map_linked_to_known_tracks[full_track.linked_from.id]
-                    known_album_id = map_known_tracks_to_albums.get(track_known_id)
-
-                if known_album_id is None:
-                    all_suspected_album_ids.add(full_track.album.id)
-
-                else:
-                    map_linked_to_known_albums[full_track.album.id] = known_album_id
-
+                    # "Fake-linking" the Album ID to itself, to maintain consistency later in the DB:
                     linked_album_dict_to_insert = {SPDBNM.LINKED_ALBUMS.FROM_ID    : full_track.album.id,
-                                                   SPDBNM.LINKED_ALBUMS.RELINKED_ID: known_album_id}
+                                                   SPDBNM.LINKED_ALBUMS.RELINKED_ID: full_track.album.id}
 
                     all_linked_albums_list_to_insert.append(linked_album_dict_to_insert)
 
-            all_linked_tracks_list_to_insert.append(linked_track_dict_to_insert)
-            all_albums_tracks_list_to_insert.append(album_track_dict_to_insert)
+                    # Assigning the Track ID to the Album ID:
+                    album_track_dict_to_insert = {SPDBNM.ALBUMS_TRACKS.ALBUM_ID: full_track.album.id,
+                                                  SPDBNM.ALBUMS_TRACKS.TRACK_ID: full_track.id}
 
-            Logic._add_album_to_list_to_save(full_track, all_albums_list_to_insert, all_albums_ids_set)
+                    # ----- Comment is obsolete and awaiting deletion. Code itself is up-to-date. ----
+                    # -- A track *is not supposed* to belong to more than one album. I hope I don't override
+                    # -- an existing TrackID Key with a different AlbumID Value:
+                    map_known_tracks_to_albums[full_track.id] = full_track.album.id
 
-            Logic._add_artists_to_list_to_save(full_track = full_track,
-                                               # all_artists_list = all_artists_list_to_insert,
-                                               all_artists_ids = all_artists_ids_set,
-                                               all_artists_albums_list = all_artists_albums_list_to_insert)
+                    utl.add_to_mapping_of_sets(mapping = map_albums_to_tracks,
+                                               key = full_track.album.id,
+                                               value = full_track.id)
 
-        # I've collected the ID's of only the tracks that are Relinked from other tracks.
-        # Here, fetching FullTrack attributes only for those relinked tracks (their IDs were only discovered earlier
-        # in the iterated FullTracks list, and now I need the rest of their attributes):
-        log.write(log.GETTING_RELINKED_TRACKS)
-        known_full_tracks = self.spapi.get_full_tracks(tracks_ids = known_ids_of_linked_tracks)
+                    map_linked_to_known_tracks[full_track.id] = full_track.id
 
-        for known_full_track in known_full_tracks:
-            map_known_tracks_to_albums[known_full_track.id] = known_full_track.album.id
+                    # If the current FullTrack is for the KnownID of a track that was previously determined as
+                    # relinked to another LinkedFromTrack, it means that this FullTrack object contains the up-to-date
+                    # KnownAlbumID I need. Thus, I don't need to fetch it later, so I remove it:
+                    if known_ids_of_linked_tracks is not None and full_track.id in known_ids_of_linked_tracks:
+                        known_ids_of_linked_tracks.discard(full_track.id)
 
-            utl.add_to_mapping_of_sets(mapping = map_albums_to_tracks,
-                                       key = known_full_track.album.id,
-                                       value = known_full_track.id)
+                else:
+                    # --Linked Track, which means its Album is also suspected as Linked--
+                    # Linking the Track's LinkedFrom ID to the Track ID:
+                    linked_track_dict_to_insert = {SPDBNM.LINKED_TRACKS.FROM_ID    : full_track.linked_from.id,
+                                                   SPDBNM.LINKED_TRACKS.RELINKED_ID: full_track.id}
 
-            Logic._add_track_to_list_to_save(known_full_track, all_tracks_list_to_insert)
+                    # Linking the (suspected as linked) Album ID to the Track's LinkedFrom ID:
+                    album_track_dict_to_insert = {SPDBNM.ALBUMS_TRACKS.ALBUM_ID: full_track.album.id,
+                                                  SPDBNM.ALBUMS_TRACKS.TRACK_ID: full_track.linked_from.id}
 
-            Logic._add_album_to_list_to_save(known_full_track, all_albums_list_to_insert, all_albums_ids_set)
+                    utl.add_to_mapping_of_sets(mapping = map_albums_to_tracks,
+                                               key = full_track.album.id,
+                                               value = full_track.linked_from.id)
 
-            Logic._add_artists_to_list_to_save(known_full_track,
-                                               # all_artists_list = all_artists_list_to_insert,
-                                               all_artists_ids = all_artists_ids_set,
-                                               all_artists_albums_list = all_artists_albums_list_to_insert)
+                    map_linked_to_known_tracks[full_track.linked_from.id] = full_track.id
 
-        # Mapping the rest of the unmapped OldAlbumIDs to their KnownAlbumIDs:
-        for suspected_album_id in all_suspected_album_ids:
-            known_album_id = map_linked_to_known_albums.get(suspected_album_id)
+                    known_ids_of_linked_tracks.add(full_track.id)
 
-            if known_album_id is None:
-                # Trying to go along the link chain, this time using the tracks that belong to the album:
-                for album_track in map_albums_to_tracks.get(suspected_album_id):
-                    track_known_id = map_linked_to_known_tracks[album_track]
-                    known_album_id = map_known_tracks_to_albums.get(track_known_id)
+                    # Trying to use a previously-saved link, to build the mapping during the loop:
+                    known_album_id = map_linked_to_known_albums.get(full_track.album.id)
 
-                    if known_album_id is not None:
-                        # By now, I don't really need to map the found KnownAlbumID, as it will not be searched anymore:
-                        map_linked_to_known_albums[suspected_album_id] = known_album_id
+                    if known_album_id is None:
+                        # Trying to go along the link chain:
+                        track_known_id = map_linked_to_known_tracks[full_track.linked_from.id]
+                        known_album_id = map_known_tracks_to_albums.get(track_known_id)
 
-                        linked_album_dict_to_insert = {SPDBNM.LINKED_ALBUMS.FROM_ID    : suspected_album_id,
+                    if known_album_id is None:
+                        all_suspected_album_ids.add(full_track.album.id)
+
+                    else:
+                        map_linked_to_known_albums[full_track.album.id] = known_album_id
+
+                        linked_album_dict_to_insert = {SPDBNM.LINKED_ALBUMS.FROM_ID    : full_track.album.id,
                                                        SPDBNM.LINKED_ALBUMS.RELINKED_ID: known_album_id}
 
                         all_linked_albums_list_to_insert.append(linked_album_dict_to_insert)
 
-                    break
+                all_linked_tracks_list_to_insert.append(linked_track_dict_to_insert)
+                all_albums_tracks_list_to_insert.append(album_track_dict_to_insert)
 
-            else:
-                # By now, I don't really need to map the found KnownAlbumID, as it will not be searched anymore:
-                map_linked_to_known_albums[suspected_album_id] = known_album_id
+                Logic._add_album_to_list_to_save(full_track, all_albums_list_to_insert, all_albums_ids_set)
 
-                linked_album_dict_to_insert = {SPDBNM.LINKED_ALBUMS.FROM_ID    : suspected_album_id,
-                                               SPDBNM.LINKED_ALBUMS.RELINKED_ID: known_album_id}
+                Logic._add_artists_to_list_to_save(full_track = full_track,
+                                                   # all_artists_list = all_artists_list_to_insert,
+                                                   all_artists_ids = all_artists_ids_set,
+                                                   all_artists_albums_list = all_artists_albums_list_to_insert)
 
-                all_linked_albums_list_to_insert.append(linked_album_dict_to_insert)
+            # I've collected the ID's of only the tracks that are Relinked from other tracks.
+            # Here, fetching FullTrack attributes only for those relinked tracks (their IDs were just discovered
+            # looping over the original FullTracks list, and now I need the rest of their attributes):
+            log.write(log.GETTING_RELINKED_TRACKS)
+            known_full_tracks = self.spapi.get_full_tracks(tracks_ids = known_ids_of_linked_tracks)
 
-        # Keeping only the unique values in each list:
-        all_tracks_list_unq = utl.get_unique_dicts(all_tracks_list_to_insert)
-        all_linked_tracks_list_unq = utl.get_unique_dicts(all_linked_tracks_list_to_insert)
-        all_linked_albums_list_unq = utl.get_unique_dicts(all_linked_albums_list_to_insert)
-        # all_artists_list_unq = utl.get_unique_dicts(all_artists_list_to_insert)
-        all_albums_list_unq = utl.get_unique_dicts(all_albums_list_to_insert)
-        all_albums_tracks_list_unq = utl.get_unique_dicts(all_albums_tracks_list_to_insert)
-        all_artists_albums_list_unq = utl.get_unique_dicts(all_artists_albums_list_to_insert)
+            # Getting the Audio Features for all the unique known tracks:
+            all_known_tracks_ids_set.union(known_ids_of_linked_tracks)
 
-        # Filling attribute `is_available` for each album:
-        full_albums = self.spapi.get_full_albums(all_albums_ids_set)
-        albums_availability = {_full_album.id: len(_full_album.available_markets) > 0 for _full_album in full_albums}
+            tracks_audio_features = self.spapi.get_tracks_audio_features(all_known_tracks_ids_set)
 
-        for i, full_album in enumerate(all_albums_list_unq):
-            all_albums_list_unq[i][SPDBNM.ALBUMS.IS_AVAILABLE] = albums_availability[full_album[SPDBNM.ALBUMS.ID]]
+            for track_features in tracks_audio_features:
+                Logic._add_track_audio_features_to_list_to_save(track_features, all_tracks_features_list_to_insert)
 
-        # Fetching Artists' attributes, including their Genres:
-        full_artists = self.spapi.get_full_artists(all_artists_ids_set)
+            # Building lists of the Tracks, Artists and Albums:
+            for known_full_track in known_full_tracks:
+                map_known_tracks_to_albums[known_full_track.id] = known_full_track.album.id
 
-        for full_artist in full_artists:
-            Logic._add_artist_dict_to_list(artist = full_artist,
-                                           all_artists_list = all_artists_list_to_insert,
-                                           all_genres_set = all_genres_set_to_insert,
-                                           all_artists_genres = all_artists_genres_list_to_insert)
+                utl.add_to_mapping_of_sets(mapping = map_albums_to_tracks,
+                                           key = known_full_track.album.id,
+                                           value = known_full_track.id)
 
-        all_artists_list_unq = utl.get_unique_dicts(all_artists_list_to_insert)
-        all_artists_genres_list_unq = utl.get_unique_dicts(all_artists_genres_list_to_insert)
+                Logic._add_track_to_list_to_save(known_full_track, all_tracks_list_to_insert)
 
-        # Inserting all values to the corresponding DB-tables:
-        self.db.insert_listen_history(self.spdt.listen_history_df)
-        self.db.insert_tracks(all_tracks_list_unq)
-        self.db.insert_linked_tracks(all_linked_tracks_list_unq)
-        self.db.insert_linked_albums(all_linked_albums_list_unq)
-        self.db.insert_artists(all_artists_list_unq)
-        self.db.insert_genres([{SPDBNM.GENRES.GENRE_NAME: genre_name} for genre_name in all_genres_set_to_insert])
-        self.db.insert_artists_genres(all_artists_genres_list_unq)
-        self.db.insert_albums(all_albums_list_unq)
-        self.db.insert_albums_tracks(all_albums_tracks_list_unq)
-        self.db.insert_artists_albums(all_artists_albums_list_unq)
+                Logic._add_album_to_list_to_save(known_full_track, all_albums_list_to_insert, all_albums_ids_set)
 
-        self.db.commit()
+                Logic._add_artists_to_list_to_save(known_full_track,
+                                                   # all_artists_list = all_artists_list_to_insert,
+                                                   all_artists_ids = all_artists_ids_set,
+                                                   all_artists_albums_list = all_artists_albums_list_to_insert)
+
+            # Mapping the rest of the unmapped OldAlbumIDs to their KnownAlbumIDs:
+            for suspected_album_id in all_suspected_album_ids:
+                known_album_id = map_linked_to_known_albums.get(suspected_album_id)
+
+                if known_album_id is None:
+                    # Trying to go along the link chain, this time using the tracks that belong to the album:
+                    for album_track in map_albums_to_tracks.get(suspected_album_id):
+                        track_known_id = map_linked_to_known_tracks[album_track]
+                        known_album_id = map_known_tracks_to_albums.get(track_known_id)
+
+                        if known_album_id is not None:
+                            # By now, I don't really need to map the found KnownAlbumID,
+                            # as it will not be searched anymore:
+                            map_linked_to_known_albums[suspected_album_id] = known_album_id
+
+                            linked_album_dict_to_insert = {SPDBNM.LINKED_ALBUMS.FROM_ID    : suspected_album_id,
+                                                           SPDBNM.LINKED_ALBUMS.RELINKED_ID: known_album_id}
+
+                            all_linked_albums_list_to_insert.append(linked_album_dict_to_insert)
+
+                        break
+
+                else:
+                    # By now, I don't really need to map the found KnownAlbumID, as it will not be searched anymore:
+                    map_linked_to_known_albums[suspected_album_id] = known_album_id
+
+                    linked_album_dict_to_insert = {SPDBNM.LINKED_ALBUMS.FROM_ID    : suspected_album_id,
+                                                   SPDBNM.LINKED_ALBUMS.RELINKED_ID: known_album_id}
+
+                    all_linked_albums_list_to_insert.append(linked_album_dict_to_insert)
+
+            # Keeping only the unique values in each list:
+            all_tracks_list_unq = utl.get_unique_dicts(all_tracks_list_to_insert)
+            all_linked_tracks_list_unq = utl.get_unique_dicts(all_linked_tracks_list_to_insert)
+            all_tracks_features_list_unq = utl.get_unique_dicts(all_tracks_features_list_to_insert)
+            all_linked_albums_list_unq = utl.get_unique_dicts(all_linked_albums_list_to_insert)
+            all_albums_list_unq = utl.get_unique_dicts(all_albums_list_to_insert)
+            all_albums_tracks_list_unq = utl.get_unique_dicts(all_albums_tracks_list_to_insert)
+            all_artists_albums_list_unq = utl.get_unique_dicts(all_artists_albums_list_to_insert)
+
+            # Filling attribute `is_available` for each album:
+            full_albums = self.spapi.get_full_albums(all_albums_ids_set)
+            albums_availability = {_full_album.id: len(_full_album.available_markets) > 0 for _full_album in
+                                   full_albums}
+
+            for i, full_album in enumerate(all_albums_list_unq):
+                all_albums_list_unq[i][SPDBNM.ALBUMS.IS_AVAILABLE] = albums_availability[full_album[SPDBNM.ALBUMS.ID]]
+
+            # Fetching Artists' attributes, including their Genres:
+            full_artists = self.spapi.get_full_artists(all_artists_ids_set)
+
+            for full_artist in full_artists:
+                Logic._add_artist_dict_to_list(artist = full_artist,
+                                               all_artists_list = all_artists_list_to_insert,
+                                               all_genres_set = all_genres_set_to_insert,
+                                               all_artists_genres = all_artists_genres_list_to_insert)
+
+            all_artists_list_unq = utl.get_unique_dicts(all_artists_list_to_insert)
+            all_artists_genres_list_unq = utl.get_unique_dicts(all_artists_genres_list_to_insert)
+
+            # Inserting all values to the corresponding DB-tables:
+            self.db.insert_listen_history(self.spdt.listen_history_df)
+            self.db.insert_tracks(all_tracks_list_unq)
+            self.db.insert_linked_tracks(all_linked_tracks_list_unq)
+            self.db.insert_tracks_audio_features(all_tracks_features_list_unq)
+            self.db.insert_linked_albums(all_linked_albums_list_unq)
+            self.db.insert_artists(all_artists_list_unq)
+            self.db.insert_genres([{SPDBNM.GENRES.GENRE_NAME: genre_name} for genre_name in all_genres_set_to_insert])
+            self.db.insert_artists_genres(all_artists_genres_list_unq)
+            self.db.insert_albums(all_albums_list_unq)
+            self.db.insert_albums_tracks(all_albums_tracks_list_unq)
+            self.db.insert_artists_albums(all_artists_albums_list_unq)
+
+            self.db.commit()
+
+        except tk.ServiceUnavailable as ex:
+            log.write(log.API_SERVICE_UNAVAILABLE.format(ex))
+
+            return
+
+        if to_csv_also:
+            self.save_listen_history_to_csv('known_listen_history_{0}.csv')
+
+        self._spdt = SpotifyDataSet(db_handler = self.db)
 
     # endregion Saving data
 
@@ -510,31 +564,34 @@ class Logic:
                 'json' = fetch from JSON files downloaded from Spotify.
         """
         self._spapi = spapi(token_keys = Logic.get_token())
-        self._db = db.DB()
+        self._db = DB()
 
         if listen_history_from == 'json':
-            self._spdt = spdt.SpotifyDataSet(db_handler = None)
+            self._spdt = SpotifyDataSet(db_handler = None)
             self.collect_data_and_save(to_csv_also = False)
 
         else:
-            self._spdt = spdt.SpotifyDataSet(db_handler = self.db)
+            self._spdt = SpotifyDataSet(db_handler = self.db)
 
     @property
     def spapi(self) -> spapi:
         return self._spapi
 
     @property
-    def db(self) -> db.DB:
+    def db(self) -> DB:
         return self._db
 
     @property
-    def spdt(self) -> spdt.SpotifyDataSet:
+    def spdt(self) -> SpotifyDataSet:
         return self._spdt
 
     def get_listen_history_df(self) -> pd.DataFrame:
         return self.spdt.listen_history_df.copy()
 
     # endregion Initialization
+
+    def get_known_tracks_ids(self) -> list[str]:
+        return self.spdt.get_distinct_tracks(sort = False)[SPDTNM.TRACK_KNOWN_ID].tolist()
 
     def get_artist_audio_features_data(self, name: str):
         artist_id = self.spapi.find_artist(name).id
@@ -553,11 +610,11 @@ class Logic:
         Aggregates all listened tracks by key, and writes it as a csv file
         :return:
         """
-        only_duration = self.spdt.listen_history_df.groupby(SPDTNM.SONG_KEY)[
+        only_duration = self.spdt.listen_history_df.groupby(SPDTNM.MUSICAL_KEY)[
             SPDTNM.MS_PLAYED].sum()
 
         my_results = self.spdt.listen_history_df.drop(columns = SPDTNM.MS_PLAYED).groupby(
-            SPDTNM.SONG_KEY).mean().assign(
+            SPDTNM.MUSICAL_KEY).mean().assign(
             duration_ms = only_duration)
 
         utl.write_df_to_file(my_results, "listen_data_by_key.csv")
@@ -569,10 +626,10 @@ class Logic:
         Returns:
             None.
         """
-        self.spdt.listen_history_df.groupby(SPDTNM.SONG_KEY).mean().to_csv("mean_by_key.csv")
+        self.spdt.listen_history_df.groupby(SPDTNM.MUSICAL_KEY).mean().to_csv("mean_by_key.csv")
 
     def calc_top_artists_by_listen_count(self, top_artists_amount = 50) -> pd.DataFrame:
-        tracks_count = self.agg_unique_tracks_by_listens().sort_values(by = SPDTNM.TOTAL_LISTEN_TIME, ascending = False)
+        tracks_count = self.agg_unique_tracks_by_listens()
 
         times_listened_by_artist = tracks_count.groupby(by = SPDTNM.ALBUM_ARTIST_NAME, as_index = True).agg(
             times_listened = (SPDTNM.TIMES_LISTENED, 'sum')).sort_values(SPDTNM.TIMES_LISTENED,
@@ -581,7 +638,16 @@ class Logic:
         return times_listened_by_artist
 
     def calc_top_artists_by_total_listen_time(self, top_artists_amount = 30) -> pd.DataFrame:
-        tracks_count = self.agg_unique_tracks_by_listens().sort_values(by = SPDTNM.TOTAL_LISTEN_TIME, ascending = False)
+        """
+        Calculates the Top Artists according to the total time listened to each artist.
+
+        Parameters:
+            top_artists_amount: Amount of artists considered "Top Artists" for calculating.
+
+        Returns:
+           DataFrame with the top artists by total listen time.
+        """
+        tracks_count = self.agg_unique_tracks_by_listens()
 
         total_listen_time_by_artist = tracks_count.groupby(by = SPDTNM.ALBUM_ARTIST_NAME, as_index = True).agg(
             total_listen_time = (SPDTNM.TOTAL_LISTEN_TIME, 'sum')).sort_values(
@@ -604,14 +670,14 @@ class Logic:
         Parameters:
             top_artists_amount: Amount of artists considered "Top Artists" for calculating.
 
-            min_track_listen_percentage: Decimal value between 0 and 1 (including boundaries), determining
+            min_track_listen_percentage: Decimal value between 0.00 and 1.00 (including boundaries), determining
                 the percentage of a track's duration that should have been played in order for the track to be
                 considered as "listened" for the calculation.
 
                 Examples: 0.30 = at least 30% of the track should have been played.
                 1.00 = the whole track should have been played.
-                0.00 = even if the track was only skipped through, without being played at all, but still being documented
-                in the listen history, it is considered as 'listened'.
+                0.00 = even if the track was only skipped through, without being played at all, but it's
+                still being documented in the listen history, it is considered as 'listened'.
 
             album_groups: List with the desired types of albums to fetch.
                 Possible values: 'album', 'appears_on', 'compilation', 'single'.
@@ -626,7 +692,7 @@ class Logic:
         elif min_track_listen_percentage > 1:
             min_track_listen_percentage = 1
 
-        tracks_count = self.agg_unique_tracks_by_listens().sort_values(by = SPDTNM.TOTAL_LISTEN_TIME, ascending = False)
+        tracks_count = self.agg_unique_tracks_by_listens()
 
         # Getting the top artists by total listen time (different from ``calc_top_artists_by_total_listen_time``):
         total_listen_time_by_artist = tracks_count.groupby(by = SPDBNM.V_KNOWN_LISTEN_HISTORY.ALBUM_ARTIST_ID,
@@ -727,11 +793,33 @@ class Logic:
             errors = 'raise',
             yearfirst = True)
 
-    def agg_unique_tracks_by_listens(self) -> pd.DataFrame:
+    def calc_audio_features_for_top_tracks(self,
+                                           top_tracks_amount: int = 30) -> pd.DataFrame:
+        """
+        Calculates the AudioFeatures that are common to the top tracks.
+
+        Parameters:
+            top_tracks_amount: Amount of tracks to be considered "Top Tracks" for calculating.
+
+        Returns:
+            DataFrame with the calculated AudioFeatures for the top tracks.
+        """
+        top_tracks = self.agg_unique_tracks_by_listens().head(top_tracks_amount).set_index(SPDTNM.TRACK_KNOWN_ID)
+
+        tracks_features_df = self.db.get_tracks_audio_features(top_tracks.index.tolist()).set_index(SPDTNM.TRACK_ID)
+
+        top_tracks_audio_features = top_tracks.join(tracks_features_df)
+
+        return top_tracks_audio_features
+
+    def agg_unique_tracks_by_listens(self, sort: bool = True) -> pd.DataFrame:
         """
         Returns the Listen History dataframe of the unique tracks (ids), each track with its aggregated
         total listens (count) and total listen time (sum), as well as its Album Artist ID and Name, & Album ID
         and Name.
+
+        Parameters:
+            sort: Whether to sort the resulting DataFrame by total listen time (descending).
 
         Returns:
             DataFrame with the aggregated listen history by each track's listens count and total listen time.
@@ -751,6 +839,9 @@ class Logic:
             album_name = (SPDTNM.ALBUM_NAME, 'first'),
             track_known_id = (SPDBNM.V_KNOWN_LISTEN_HISTORY.TRACK_KNOWN_ID, 'first'),
             track_name = (SPDTNM.TRACK_NAME, 'first'))
+
+        if sort:
+            tracks_count = tracks_count.sort_values(by = SPDTNM.TOTAL_LISTEN_TIME, ascending = False)
 
         return tracks_count
 
