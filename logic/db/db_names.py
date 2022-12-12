@@ -1,4 +1,9 @@
 from dataclasses import dataclass
+import config
+
+# File paths
+DB_FILE_NAME = config.DB_FILE_NAME
+DB_SCHEMA_FILE_NAME = config.DB_SCHEMA_FILE_NAME
 
 
 @dataclass(frozen = True)

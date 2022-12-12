@@ -1,4 +1,11 @@
 from dataclasses import dataclass
+import config
+
+
+@dataclass(frozen = True)
+class PATH:
+    JSON_FILE_PATH = config.JSON_FILE_PATH
+    JSON_FILE_PREFIX = config.JSON_FILE_PREFIX
 
 
 @dataclass(frozen = True)

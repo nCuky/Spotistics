@@ -161,8 +161,8 @@ class DB:
         """
         Initializes the DB Manager for working with the DB.
         """
-        self._db_filename_ = "data/personal_data/my_spotify_data.db"
-        self._db_schema_filename = "logic/db/my_spotify_data_db_scheme.sql"
+        self._db_filename_ = SPDBNM.DB_FILE_NAME
+        self._db_schema_filename = SPDBNM.DB_SCHEMA_FILE_NAME
 
         # Connect to DB
         self.connection = sqlite3.connect(self._db_filename_)

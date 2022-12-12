@@ -7,6 +7,7 @@ from logic.frontend import log
 from logic.db import db
 import json
 from logic.model.sp_data_set_names import SPDT as SPDTNM
+from logic.model.sp_data_set_names import PATH as SPDTPATH
 
 
 class SpotifyDataSet:
@@ -29,14 +30,6 @@ class SpotifyDataSet:
     MUSICAL_MODE_MAP = {0: 'm',
                         1: 'M'}
 
-    # keys_replacement_dict = {'from': np.arange(start = 0, stop = 12, step = 1),
-    #                          'to'  : ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']}
-    # modes_replacement_dict = {'from': [0, 1],
-    #                           'to'  : ['m', 'M']}
-
-    DEFAULT_JSON_FILE_PATH = 'data/personal_data/raw_json'
-    DEFAULT_JSON_FILE_PREFIX = 'endsong'
-
     # region Utility Methods
 
     @staticmethod
@@ -50,12 +43,12 @@ class SpotifyDataSet:
         Returns:
             None
         """
-        files_list = [filename for filename in os.listdir(SpotifyDataSet.DEFAULT_JSON_FILE_PATH) if
-                      re.match(string = filename, pattern = f'{SpotifyDataSet.DEFAULT_JSON_FILE_PREFIX}.*.json')]
+        files_list = [filename for filename in os.listdir(SPDTPATH.JSON_FILE_PATH) if
+                      re.match(string = filename, pattern = f'{SPDTPATH.JSON_FILE_PREFIX}.*.json')]
 
         # Trying to read all 'Listen History' files that are available in the given folder:
         for filename in files_list:
-            source_file_path = SpotifyDataSet.DEFAULT_JSON_FILE_PATH + '/' + filename
+            source_file_path = SPDTPATH.JSON_FILE_PATH + '/' + filename
 
             if os.path.isfile(source_file_path):
                 with open(source_file_path, "rt", encoding = 'utf-8') as file_to_read:
@@ -70,7 +63,7 @@ class SpotifyDataSet:
 
                         cleaned_json_data.append(cleaned_item)
 
-                dest_file_path = SpotifyDataSet.DEFAULT_JSON_FILE_PATH + '/cleaned'
+                dest_file_path = SPDTPATH.JSON_FILE_PATH + '/cleaned'
                 Path(dest_file_path).mkdir(parents = True, exist_ok = True)
                 dest_file_path += '/' + filename
 
@@ -79,7 +72,7 @@ class SpotifyDataSet:
 
     @staticmethod
     def collect_all_listen_history(folder_path: str = None,
-                                   filename_prefix: str = DEFAULT_JSON_FILE_PREFIX) -> pd.DataFrame:
+                                   filename_prefix: str = SPDTPATH.JSON_FILE_PREFIX) -> pd.DataFrame:
         """
         Reads all Listen History data, either from an existing DB,
         or from JSON files (already requested and downloaded from Spotify) contained in the given
@@ -232,7 +225,7 @@ class SpotifyDataSet:
 
     def __init__(self,
                  db_handler: db.DB = None,
-                 data_dir: str = DEFAULT_JSON_FILE_PATH):
+                 data_dir: str = SPDTPATH.JSON_FILE_PATH):
         """
         Initializes a dataset for managing the listen history and related data.
         This dataset can come either from Spotify JSON files, or from a given DB.
