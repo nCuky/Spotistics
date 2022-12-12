@@ -1,8 +1,9 @@
 from logic.app_logic import Logic as lg
 from logic.frontend import plotting as plt
+import config
 
 # Initializing the application:
-my_lg = lg(listen_history_from = 'db')
+my_lg = lg(listen_history_from = config.GET_LISTEN_HISTORY_FROM)
 
 plt.top_artists_by_listen_count(my_lg)
 plt.top_artists_by_total_listen_time(my_lg)

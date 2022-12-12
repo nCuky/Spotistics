@@ -26,6 +26,9 @@ class Logic:
             Handles the local database.
     """
 
+    HISTORY_FROM_DB = 'db'
+    HISTORY_FROM_JSON = 'json'
+
     # region Utility Methods
 
     @staticmethod
@@ -552,7 +555,7 @@ class Logic:
 
     # region Initialization
 
-    def __init__(self, listen_history_from: str = 'db'):
+    def __init__(self, listen_history_from: str = HISTORY_FROM_DB):
         """
         Initializes an instance of the app's main Logic.
 
@@ -566,7 +569,7 @@ class Logic:
         self._spapi = spapi(token_keys = Logic.get_token())
         self._db = DB()
 
-        if listen_history_from == 'json':
+        if listen_history_from == Logic.HISTORY_FROM_JSON:
             self._spdt = SpotifyDataSet(db_handler = None)
             self.collect_data_and_save(to_csv_also = False)
 
