@@ -16,25 +16,25 @@ Define and summarize one's musical taste; Identify patterns, trends and other in
 history, and display them in a coherent and simple manner.  
 
 ### Prerequisites
-1. **[Request to download your personal Data from Spotify](mailto:privacy@spotify.com)** - specifically, request to get
-   the **extended streaming history and other technical information for the life of your account**. 
+1. **[Request to download your personal Data from Spotify](https://www.spotify.com/us/account/privacy/#:~:text=Select%20Account%20data-,Extended%20streaming%20history,-Extended%20streaming%20history)** - specifically, request to get
+   the **extended streaming history for the life of your account**. 
    
    This can take up to 30 days (in practice it's usually less than that), so please be patient. 
-
+   
+   **Explanation**: 
+   
    Sadly, it is **impossible** to instantly fetch the _complete_ listening history of one's Spotify account **on-demand**.
    The Spotify API only allows to fetch the last 50 recently played tracks, and no more. This is a hard limitation 
    of the API that unfortunately cannot be circumvented. 
    For this reason, the app needs to use a pre-downloaded dataset. Every Spotify user can go to their account's
-   [Privacy Dashboard](https://www.spotify.com/us/account/privacy/#:~:text=Download%20your%20data), and request
-   their data in one of two ways:
-
-    - Clicking the **Request** button at the bottom of that page, using the automated "Download your Data" tool. This
-      method yields the streaming history **for the past year** and no more, and at the moment **is not supported by 
-      this project**;
-    - **[Manually contacting](mailto:privacy@spotify.com)** Spotify and requesting the extended streaming history for 
-      the life of your account. 
-      This method **is preferred** and is used by this project, but its major drawback is that
-      it can take up to 30 days to get your data (personally, I received my data after 10 days).
+   [Privacy Dashboard](https://www.spotify.com/us/account/privacy/#:~:text=Select%20Account%20data-,Extended%20streaming%20history,-Extended%20streaming%20history),
+   and request their data:
+   - Scroll down to "**Download your data**"
+   - Check "**Select Extended streaming history**"
+   - Click the **Request data** button at the bottom of the page
+   - **Note:** The "Account data" method yields the listen history only for the past year, and it's currently **not supported by this app**. Be sure to 
+     download the Extended streaming history.
+     It can take up to 30 days to get your data. Personally, I received my data after 10 days.
 
 2. Clone this project into a folder of your choice.
 
